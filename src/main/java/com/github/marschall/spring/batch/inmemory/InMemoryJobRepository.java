@@ -36,8 +36,9 @@ public final class InMemoryJobRepository implements JobRepository {
 
   @Override
   public JobExecution createJobExecution(JobInstance jobInstance, JobParameters jobParameters, String jobConfigurationLocation) {
-    // TODO Auto-generated method stub
-    return null;
+    Objects.requireNonNull(jobInstance, "jobInstance");
+    Objects.requireNonNull(jobParameters, "jobParameters");
+    return this.storage.createJobExecution(jobInstance, jobParameters, jobConfigurationLocation);
   }
 
   @Override
@@ -49,8 +50,10 @@ public final class InMemoryJobRepository implements JobRepository {
 
   @Override
   public void update(JobExecution jobExecution) {
-    // TODO Auto-generated method stub
-
+    Objects.requireNonNull(jobExecution, "jobExecution");
+    Objects.requireNonNull(jobExecution.getJobId(), "jobExecution.getJobId()");
+    Objects.requireNonNull(jobExecution.getId(), "jobExecution.getId()");
+    this.storage.update(jobExecution);
   }
 
   @Override
