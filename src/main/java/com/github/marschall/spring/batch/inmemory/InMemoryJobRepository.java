@@ -44,6 +44,9 @@ public final class InMemoryJobRepository implements JobRepository {
   @Override
   public JobExecution createJobExecution(String jobName, JobParameters jobParameters)
           throws JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException {
+    Objects.requireNonNull(jobName, "jobName");
+    Objects.requireNonNull(jobParameters, "jobParameters");
+
     // TODO Auto-generated method stub
     return null;
   }

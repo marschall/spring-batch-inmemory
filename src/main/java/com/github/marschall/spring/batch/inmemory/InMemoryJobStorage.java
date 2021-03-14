@@ -10,10 +10,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
+import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.launch.NoSuchJobException;
+import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
+import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.dao.OptimisticLockingFailureException;
 
@@ -22,6 +26,7 @@ public final class InMemoryJobStorage {
   private final Map<Long, JobInstance> instancesById;
   private final Map<String, List<JobInstanceAndParameters>> instancesByName;
   private final Map<Long, JobExecution> jobExecutionsById;
+  private final Map<Long, List<Long>> jobInstanceToExecutions;
   private final Map<Long, ExecutionContext> jobExecutionContextsById;
 
   private final ReentrantReadWriteLock instanceLock;
@@ -33,6 +38,7 @@ public final class InMemoryJobStorage {
     this.instancesByName = new HashMap<>();
     this.jobExecutionsById = new HashMap<>();
     this.jobExecutionContextsById = new HashMap<>();
+    this.jobInstanceToExecutions = new HashMap<>();
     this.instanceLock = new ReentrantReadWriteLock();
     this.nextJobInstanceId = 1L;
     this.nextJobExecutionId = 1L;
@@ -83,11 +89,84 @@ public final class InMemoryJobStorage {
     try {
       this.jobExecutionsById.put(jobExecutionId, copyJobExecution(jobExecution));
       this.jobExecutionContextsById.put(jobExecutionId, copyExecutionContext(executionContext));
+      this.jobInstanceToExecutions.computeIfAbsent(jobInstance.getInstanceId(), id -> new ArrayList<>()).add(jobExecutionId);
     } finally {
       writeLock.unlock();
     }
 
     return jobExecution;
+  }
+
+  JobExecution createJobExecution(String jobName, JobParameters jobParameters)
+          throws JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException {
+    WriteLock writeLock = this.instanceLock.writeLock();
+    writeLock.lock();
+    try {
+      // Find all jobs matching the runtime information.
+      JobInstance jobInstance = this.getJobInstanceUnlocked(jobName, jobParameters);
+
+
+      // existing job instance found
+      if (jobInstance != null) {
+        List<Long> executionIds = this.jobInstanceToExecutions.get(jobInstance.getInstanceId());
+        if (executionIds != null) {
+          for (Long executionId : executionIds) {
+            JobExecution jobExecution = this.jobExecutionsById.get(executionId);
+            if (jobExecution.isRunning() || jobExecution.isStopping()) {
+              throw new JobExecutionAlreadyRunningException("A job execution for this job is already running: " + jobInstance);
+            }
+            BatchStatus status = jobExecution.getStatus();
+            if (status == BatchStatus.UNKNOWN) {
+              throw new JobRestartException("Cannot restart job from UNKNOWN status. "
+                      + "The last execution ended with a failure that could not be rolled back, "
+                      + "so it may be dangerous to proceed. Manual intervention is probably necessary.");
+            }
+            if (!jobExecution.getJobParameters().getParameters().isEmpty() && ((status == BatchStatus.COMPLETED) || (status == BatchStatus.ABANDONED))) {
+              throw new JobInstanceAlreadyCompleteException(
+                      "A job instance already exists and is complete for parameters=" + jobParameters
+                      + ".  If you want to run this job again, change the parameters.");
+            }
+          }
+        }
+
+
+      } else {
+        // no job found, create one
+
+      }
+    } finally {
+      writeLock.unlock();
+    }
+  }
+
+  private JobExecution getLastJobExecutionUnlocked(JobInstance jobInstance) {
+    JobExecution lastJobExecution = null;
+    List<Long> executionIds = this.jobInstanceToExecutions.get(jobInstance.getInstanceId());
+    if (executionIds != null) {
+      for (Long executionId : executionIds) {
+        JobExecution jobExecution = this.jobExecutionsById.get(executionId);
+        if (lastJobExecution == null) {
+          lastJobExecution = jobExecution;
+        } else if (lastJobExecution.getCreateTime().before(jobExecution.getCreateTime())) {
+          lastJobExecution = jobExecution;
+        }
+      }
+    }
+    if (lastJobExecution != null) {
+      return copyJobExecution(lastJobExecution);
+    } else {
+      return null;
+    }
+  }
+
+  JobExecution getLastJobExecution(JobInstance jobInstance) {
+    ReadLock readLock = this.instanceLock.readLock();
+    readLock.lock();
+    try {
+      return this.getLastJobExecution(jobInstance);
+    } finally {
+      readLock.unlock();
+    }
   }
 
   void update(JobExecution jobExecution) {
@@ -148,19 +227,23 @@ public final class InMemoryJobStorage {
     }
   }
 
+  private JobInstance getJobInstanceUnlocked(String jobName, JobParameters jobParameters) {
+    List<JobInstanceAndParameters> instancesAndParameters = this.instancesByName.get(jobName);
+    if(instancesAndParameters != null) {
+      for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
+        if (instanceAndParametes.getJobParameters().equals(jobParameters)) {
+          return instanceAndParametes.getJobInstance();
+        }
+      }
+    }
+    return null;
+  }
+
   boolean isJobInstanceExists(String jobName, JobParameters jobParameters) {
     ReadLock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
-      List<JobInstanceAndParameters> instancesAndParameters = this.instancesByName.get(jobName);
-      if(instancesAndParameters != null) {
-        for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
-          if (instanceAndParametes.getJobParameters().equals(jobParameters)) {
-            return true;
-          }
-        }
-      }
-      return false;
+      return this.getJobInstanceUnlocked(jobName, jobParameters) != null;
     } finally {
       readLock.unlock();
     }

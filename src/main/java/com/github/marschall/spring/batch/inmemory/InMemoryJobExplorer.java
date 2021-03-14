@@ -37,6 +37,19 @@ public final class InMemoryJobExplorer implements JobExplorer {
   }
 
   @Override
+  public JobExecution getLastJobExecution(JobInstance jobInstance) {
+    Objects.requireNonNull(jobInstance, "jobInstance");
+    return this.storage.getLastJobExecution(jobInstance);
+  }
+
+  @Override
+  public JobInstance getLastJobInstance(String jobName) {
+    Objects.requireNonNull(jobName, "jobName");
+    // TODO Auto-generated method stub
+    return JobExplorer.super.getLastJobInstance(jobName);
+  }
+
+  @Override
   public StepExecution getStepExecution(Long jobExecutionId, Long stepExecutionId) {
     // TODO Auto-generated method stub
     return null;
