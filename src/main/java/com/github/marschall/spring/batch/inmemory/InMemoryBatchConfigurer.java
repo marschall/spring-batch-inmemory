@@ -26,4 +26,6 @@ abstract class InMemoryBatchConfigurer implements BatchConfigurer {
     return this.jobRepository;
   }
 
+  // TODO JobLauncher
+
 }

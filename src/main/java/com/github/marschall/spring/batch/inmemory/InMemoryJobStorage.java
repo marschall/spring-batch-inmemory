@@ -1,14 +1,19 @@
 package com.github.marschall.spring.batch.inmemory;
 
+import static java.util.stream.Collectors.toList;
+
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+import java.util.regex.Pattern;
 
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
@@ -24,7 +29,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 public final class InMemoryJobStorage {
 
   private final Map<Long, JobInstance> instancesById;
-  private final Map<String, List<JobInstanceAndParameters>> instancesByName;
+  private final Map<String, List<JobInstanceAndParameters>> jobInstancesByName;
   private final Map<Long, JobExecution> jobExecutionsById;
   private final Map<Long, List<Long>> jobInstanceToExecutions;
   private final Map<Long, ExecutionContext> jobExecutionContextsById;
@@ -35,7 +40,7 @@ public final class InMemoryJobStorage {
 
   public InMemoryJobStorage() {
     this.instancesById = new HashMap<>();
-    this.instancesByName = new HashMap<>();
+    this.jobInstancesByName = new HashMap<>();
     this.jobExecutionsById = new HashMap<>();
     this.jobExecutionContextsById = new HashMap<>();
     this.jobInstanceToExecutions = new HashMap<>();
@@ -50,7 +55,7 @@ public final class InMemoryJobStorage {
 
     WriteLock writeLock = this.instanceLock.writeLock();
     try {
-      List<JobInstanceAndParameters> instancesAndParameters = this.instancesByName.get(jobName);
+      List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
       if (instancesAndParameters != null) {
         for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
           if (instanceAndParametes.getJobParameters().equals(jobParameters)) {
@@ -65,7 +70,7 @@ public final class InMemoryJobStorage {
       this.instancesById.put(jobInstance.getId(), jobInstance);
       if (instancesAndParameters == null) {
         instancesAndParameters = new ArrayList<>();
-        this.instancesByName.put(jobName, instancesAndParameters);
+        this.jobInstancesByName.put(jobName, instancesAndParameters);
       }
       instancesAndParameters.add(new JobInstanceAndParameters(jobInstance, jobParameters));
 
@@ -141,7 +146,7 @@ public final class InMemoryJobStorage {
 
   private JobExecution getLastJobExecutionUnlocked(JobInstance jobInstance) {
     JobExecution lastJobExecution = null;
-    List<Long> executionIds = this.jobInstanceToExecutions.get(jobInstance.getInstanceId());
+    List<Long> executionIds = this.jobInstanceToExecutions.get(jobInstance.getId());
     if (executionIds != null) {
       for (Long executionId : executionIds) {
         JobExecution jobExecution = this.jobExecutionsById.get(executionId);
@@ -163,7 +168,7 @@ public final class InMemoryJobStorage {
     ReadLock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
-      return this.getLastJobExecution(jobInstance);
+      return this.getLastJobExecutionUnlocked(jobInstance);
     } finally {
       readLock.unlock();
     }
@@ -228,7 +233,7 @@ public final class InMemoryJobStorage {
   }
 
   private JobInstance getJobInstanceUnlocked(String jobName, JobParameters jobParameters) {
-    List<JobInstanceAndParameters> instancesAndParameters = this.instancesByName.get(jobName);
+    List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
     if(instancesAndParameters != null) {
       for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
         if (instanceAndParametes.getJobParameters().equals(jobParameters)) {
@@ -249,13 +254,112 @@ public final class InMemoryJobStorage {
     }
   }
 
-  List<JobInstance> getJobInstances(String jobName, int start, int count) {
-    Objects.requireNonNull(jobName, "jobName");
-    if (start < 0) {
-      throw new IllegalArgumentException("start is negative");
+  JobInstance getLastJobInstance(String jobName) {
+    ReadLock readLock = this.instanceLock.readLock();
+    readLock.lock();
+
+    try {
+      List<JobInstanceAndParameters> jobInstances = this.jobInstancesByName.get(jobName);
+      if ((jobInstances == null) || jobInstances.isEmpty()) {
+        return null;
+      }
+      if (jobInstances.size() == 1) {
+        return jobInstances.get(0).getJobInstance();
+      } else {
+        // the last one should have the highest id
+        JobInstance jobInstanceWithHighestId = jobInstances.get(0).getJobInstance();
+        for (int i = 1; i < jobInstances.size(); i++) {
+          JobInstance jobInstance = jobInstances.get(i).getJobInstance();
+          if (jobInstance.getInstanceId() > jobInstanceWithHighestId.getInstanceId()) {
+            jobInstanceWithHighestId = jobInstance;
+          }
+        }
+        return jobInstanceWithHighestId;
+      }
+    } finally {
+      readLock.unlock();
     }
+  }
+
+
+  JobExecution getJobExecution(Long executionId) {
     // TODO Auto-generated method stub
     return null;
+  }
+
+  List<JobInstance> findJobInstancesByJobName(String jobName, int start, int count) {
+    return this.getJobInstancesByNamePattern(jobName, start, count);
+  }
+
+  List<JobInstance> getJobInstances(String jobName, int start, int count) {
+
+    boolean exactPattern = isExactPattern(jobName);
+    if (exactPattern) {
+      return this.getJobInstancesByNameExact(jobName, start, count);
+    } else {
+      return this.getJobInstancesByNamePattern(jobName, start, count);
+    }
+  }
+
+  List<JobInstance> getJobInstancesByNameExact(String jobName, int start, int count) {
+    if ((start == 0) && (count == 1)) {
+      JobInstance lastJobInstance = this.getLastJobInstance(jobName);
+      if (lastJobInstance != null) {
+        return List.of(lastJobInstance);
+      } else {
+        return List.of();
+      }
+    }
+
+    ReadLock readLock = this.instanceLock.readLock();
+    readLock.lock();
+    try {
+      List<JobInstanceAndParameters> jobInstances = this.jobInstancesByName.get(jobName);
+      if ((jobInstances == null) || jobInstances.isEmpty()) {
+        return List.of();
+      }
+      return jobInstances.stream()
+                         .map(JobInstanceAndParameters::getJobInstance)
+                         .sorted(Comparator.comparingLong(JobInstance::getInstanceId))
+                         .skip(start)
+                         .limit(count)
+                         .collect(toList());
+    } finally {
+      readLock.unlock();
+    }
+  }
+
+
+
+  List<JobInstance> getJobInstancesByNamePattern(String jobName, int start, int count) {
+    Pattern pattern = Pattern.compile(jobName.replaceAll("\\*", ".*"));
+    List<JobInstance> jobInstancesUnstorted = new ArrayList<>();
+
+    ReadLock readLock = this.instanceLock.readLock();
+    readLock.lock();
+    try {
+      for (Entry<String, List<JobInstanceAndParameters>> entries : this.jobInstancesByName.entrySet()) {
+        if (pattern.matcher(entries.getKey()).matches()) {
+          for (JobInstanceAndParameters jobInstanceAndParameters : entries.getValue()) {
+            jobInstancesUnstorted.add(jobInstanceAndParameters.getJobInstance());
+          }
+        }
+      }
+    } finally {
+      readLock.unlock();
+    }
+
+    return jobInstancesUnstorted.stream()
+                                .sorted(Comparator.comparingLong(JobInstance::getInstanceId))
+                                .skip(start)
+                                .limit(count)
+                                .collect(toList());
+  }
+
+  private static boolean isExactPattern(String s) {
+    // only * seems to be officially supported
+    // MapJobInstanceDao and JdbcJobInstanceDao behave differently for _
+    return (s.indexOf('*') == -1) && (s.indexOf('_') == -1);
   }
 
   List<String> getJobNames() {
@@ -263,7 +367,7 @@ public final class InMemoryJobStorage {
     ReadLock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
-      jobNames = new ArrayList<>(this.instancesByName.keySet());
+      jobNames = new ArrayList<>(this.jobInstancesByName.keySet());
     } finally {
       readLock.unlock();
     }
@@ -275,7 +379,7 @@ public final class InMemoryJobStorage {
     ReadLock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
-      List<JobInstanceAndParameters> instancesAndParameters = this.instancesByName.get(jobName);
+      List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
       if(instancesAndParameters == null) {
         throw new NoSuchJobException("No job instances for job name " + jobName + " were found");
       } else {

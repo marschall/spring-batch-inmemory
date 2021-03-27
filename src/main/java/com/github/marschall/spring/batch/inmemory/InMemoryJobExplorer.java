@@ -21,7 +21,31 @@ public final class InMemoryJobExplorer implements JobExplorer {
   @Override
   public List<JobInstance> getJobInstances(String jobName, int start, int count) {
     Objects.requireNonNull(jobName, "jobName");
+    if (start < 0) {
+      throw new IllegalArgumentException("start: " + start + " must be positive");
+    }
+    if (count < 0) {
+      throw new IllegalArgumentException("count: " + start + " must be positive");
+    }
+    if (count == 0) {
+      return List.of();
+    }
     return this.storage.getJobInstances(jobName, start, count);
+  }
+
+  @Override
+  public List<JobInstance> findJobInstancesByJobName(String jobName, int start, int count) {
+    Objects.requireNonNull(jobName, "jobName");
+    if (start < 0) {
+      throw new IllegalArgumentException("start: " + start + " must be positive");
+    }
+    if (count < 0) {
+      throw new IllegalArgumentException("count: " + start + " must be positive");
+    }
+    if (count == 0) {
+      return List.of();
+    }
+    return this.storage.findJobInstancesByJobName(jobName, start, count);
   }
 
   @Override
@@ -32,8 +56,8 @@ public final class InMemoryJobExplorer implements JobExplorer {
 
   @Override
   public JobExecution getJobExecution(Long executionId) {
-    // TODO Auto-generated method stub
-    return null;
+    Objects.requireNonNull(executionId, "executionId");
+    return this.storage.getJobExecution(executionId);
   }
 
   @Override
@@ -45,8 +69,7 @@ public final class InMemoryJobExplorer implements JobExplorer {
   @Override
   public JobInstance getLastJobInstance(String jobName) {
     Objects.requireNonNull(jobName, "jobName");
-    // TODO Auto-generated method stub
-    return JobExplorer.super.getLastJobInstance(jobName);
+    return this.storage.getLastJobInstance(jobName);
   }
 
   @Override
@@ -70,12 +93,6 @@ public final class InMemoryJobExplorer implements JobExplorer {
   @Override
   public List<String> getJobNames() {
     return this.storage.getJobNames();
-  }
-
-  @Override
-  public List<JobInstance> findJobInstancesByJobName(String jobName, int start, int count) {
-    // TODO Auto-generated method stub
-    return null;
   }
 
   @Override

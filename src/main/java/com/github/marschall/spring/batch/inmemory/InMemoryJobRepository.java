@@ -90,8 +90,7 @@ public final class InMemoryJobRepository implements JobRepository {
   }
 
   @Override
-  public StepExecution getLastStepExecution(JobInstance jobInstance,
-          String stepName) {
+  public StepExecution getLastStepExecution(JobInstance jobInstance, String stepName) {
     // TODO Auto-generated method stub
     return null;
   }
