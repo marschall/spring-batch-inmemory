@@ -101,4 +101,15 @@ public final class InMemoryJobExplorer implements JobExplorer {
     return this.storage.getJobInstanceCount(jobName);
   }
 
+  /*
+   * Find all dependencies for a JobExecution, including JobInstance (which
+   * requires JobParameters) plus StepExecutions
+   */
+  private void getJobExecutionDependencies(JobExecution jobExecution) {
+    List<StepExecution> stepExecutions = this.storage.getStepExecutions(jobExecution);
+    jobExecution.addStepExecutions(stepExecutions);
+    jobExecution.setExecutionContext(this.storage.getExecutionContext(jobExecution));
+
+  }
+
 }

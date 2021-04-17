@@ -19,6 +19,7 @@ import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.launch.NoSuchJobException;
 import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
 import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
@@ -33,6 +34,7 @@ public final class InMemoryJobStorage {
   private final Map<Long, JobExecution> jobExecutionsById;
   private final Map<Long, List<Long>> jobInstanceToExecutions;
   private final Map<Long, ExecutionContext> jobExecutionContextsById;
+  private final Map<Long, Map<Long, StepExecution>> stepExecutionsByJobExecutionId;
 
   private final ReentrantReadWriteLock instanceLock;
   private long nextJobInstanceId;
@@ -44,6 +46,7 @@ public final class InMemoryJobStorage {
     this.jobExecutionsById = new HashMap<>();
     this.jobExecutionContextsById = new HashMap<>();
     this.jobInstanceToExecutions = new HashMap<>();
+    this.stepExecutionsByJobExecutionId = new HashMap<>();
     this.instanceLock = new ReentrantReadWriteLock();
     this.nextJobInstanceId = 1L;
     this.nextJobExecutionId = 1L;
@@ -100,6 +103,17 @@ public final class InMemoryJobStorage {
     }
 
     return jobExecution;
+  }
+
+  ExecutionContext getExecutionContext(JobExecution jobExecution) {
+    ReadLock readLock = this.instanceLock.readLock();
+    readLock.lock();
+    try {
+      ExecutionContext executionContext = this.jobExecutionContextsById.get(jobExecution.getId());
+      return copyExecutionContext(executionContext);
+    } finally {
+      readLock.unlock();
+    }
   }
 
   JobExecution createJobExecution(String jobName, JobParameters jobParameters)
@@ -390,12 +404,59 @@ public final class InMemoryJobStorage {
     }
   }
 
+
+  List<StepExecution> getStepExecutions(JobExecution jobExecution) {
+    ReadLock readLock = this.instanceLock.readLock();
+    readLock.lock();
+    try {
+      Map<Long, StepExecution> executions = this.stepExecutionsByJobExecutionId.get(jobExecution.getId());
+      if ((executions == null) || executions.isEmpty()) {
+        List.of();
+      }
+      List<StepExecution> stepExecutions = new ArrayList<>(executions.values());
+      stepExecutions.sort(Comparator.comparing(StepExecution::getId));
+      for (int i = 0; i < stepExecutions.size(); i++) {
+        StepExecution stepExecution = stepExecutions.get(i);
+        stepExecutions.set(i, copyStepExecution(stepExecution));
+      }
+      return stepExecutions;
+    } finally {
+      readLock.unlock();
+    }
+  }
+
   private static ExecutionContext copyExecutionContext(ExecutionContext original) {
     return new ExecutionContext(original);
   }
 
   private static JobExecution copyJobExecution(JobExecution original) {
     return new JobExecution(original);
+  }
+
+  private static StepExecution copyStepExecution(StepExecution original) {
+    StepExecution copy = new StepExecution(original.getStepName(), original.getJobExecution(), original.getId());
+    copy.setStatus(original.getStatus());
+
+    copy.setReadCount(original.getReadCount());
+    copy.setWriteCount(original.getWriteCount());
+    copy.setCommitCount(original.getCommitCount());
+    copy.setRollbackCount(original.getRollbackCount());
+    copy.setReadSkipCount(original.getReadSkipCount());
+    copy.setProcessSkipCount(original.getProcessSkipCount());
+    copy.setWriteSkipCount(original.getWriteSkipCount());
+
+    copy.setStartTime(original.getStartTime());
+    copy.setEndTime(original.getEndTime());
+    copy.setLastUpdated(original.getLastUpdated());
+
+    copy.setExecutionContext(copyExecutionContext(original.getExecutionContext()));
+    copy.setExitStatus(original.getExitStatus());
+    if (original.isTerminateOnly()) {
+      copy.setTerminateOnly();
+    }
+    copy.setFilterCount(original.getFilterCount());
+
+    return copy;
   }
 
   static final class JobInstanceAndParameters {
