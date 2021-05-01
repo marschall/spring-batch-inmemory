@@ -1,6 +1,7 @@
 package com.github.marschall.spring.batch.inmemory;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.Objects;
 
 import org.springframework.batch.core.JobExecution;
@@ -57,8 +58,17 @@ public final class InMemoryJobRepository implements JobRepository {
     this.storage.update(jobExecution);
   }
 
+  private static void validateStepExecution(StepExecution stepExecution) {
+    Objects.requireNonNull(stepExecution, "StepExecution cannot be null.");
+    Objects.requireNonNull(stepExecution.getStepName(), "StepExecution's step name cannot be null.");
+    Objects.requireNonNull(stepExecution.getJobExecutionId(), "StepExecution must belong to persisted JobExecution");
+  }
+
   @Override
   public void add(StepExecution stepExecution) {
+    validateStepExecution(stepExecution);
+
+    stepExecution.setLastUpdated(new Date());
     // TODO Auto-generated method stub
 
   }
