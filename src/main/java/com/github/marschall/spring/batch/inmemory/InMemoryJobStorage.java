@@ -34,22 +34,26 @@ public final class InMemoryJobStorage {
   private final Map<Long, JobExecution> jobExecutionsById;
   private final Map<Long, List<Long>> jobInstanceToExecutions;
   private final Map<Long, ExecutionContext> jobExecutionContextsById;
+  private final Map<Long, ExecutionContext> stepExecutionContextsById;
   private final Map<Long, Map<Long, StepExecution>> stepExecutionsByJobExecutionId;
 
   private final ReentrantReadWriteLock instanceLock;
   private long nextJobInstanceId;
   private long nextJobExecutionId;
+  private long nextStepExecutionId;
 
   public InMemoryJobStorage() {
     this.instancesById = new HashMap<>();
     this.jobInstancesByName = new HashMap<>();
     this.jobExecutionsById = new HashMap<>();
     this.jobExecutionContextsById = new HashMap<>();
+    this.stepExecutionContextsById = new HashMap<>();
     this.jobInstanceToExecutions = new HashMap<>();
     this.stepExecutionsByJobExecutionId = new HashMap<>();
     this.instanceLock = new ReentrantReadWriteLock();
     this.nextJobInstanceId = 1L;
     this.nextJobExecutionId = 1L;
+    this.nextStepExecutionId = 1L;
   }
 
   JobInstance createJobInstance(String jobName, JobParameters jobParameters) {
@@ -218,7 +222,21 @@ public final class InMemoryJobStorage {
     }
   }
 
-  private void synchronizeStatus(JobExecution jobExecution) {
+  void updateJobExecutionContext(JobExecution jobExecution) {
+    Long jobExecutionId = jobExecution.getId();
+    ExecutionContext jobExecutionContext = jobExecution.getExecutionContext();
+    if (jobExecutionContext != null) {
+      ExecutionContext jobExecutionContextCopy = copyExecutionContext(jobExecutionContext);
+      WriteLock writeLock = this.instanceLock.writeLock();
+      try {
+        this.jobExecutionContextsById.put(jobExecutionId, jobExecutionContextCopy);
+      } finally {
+        writeLock.unlock();
+      }
+    }
+  }
+
+  void synchronizeStatus(JobExecution jobExecution) {
     ReadLock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
@@ -406,10 +424,11 @@ public final class InMemoryJobStorage {
 
 
   List<StepExecution> getStepExecutions(JobExecution jobExecution) {
+    Long jobExecutionId = jobExecution.getId();
     ReadLock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
-      Map<Long, StepExecution> executions = this.stepExecutionsByJobExecutionId.get(jobExecution.getId());
+      Map<Long, StepExecution> executions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
       if ((executions == null) || executions.isEmpty()) {
         List.of();
       }
@@ -423,6 +442,93 @@ public final class InMemoryJobStorage {
     } finally {
       readLock.unlock();
     }
+  }
+
+  void addStepExecution(StepExecution stepExecution) {
+    Long jobExecutionId = stepExecution.getJobExecutionId();
+    WriteLock writeLock = this.instanceLock.writeLock();
+    try {
+      Map<Long, StepExecution> stepExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
+      if (stepExecutions == null) {
+        stepExecutions = new HashMap<>();
+        this.stepExecutionsByJobExecutionId.put(jobExecutionId, stepExecutions);
+      }
+
+      Long stepExecutionId = this.nextStepExecutionId;
+      stepExecution.setId(this.nextStepExecutionId++);
+      stepExecution.incrementVersion();
+
+      StepExecution stepExecutionCopy = copyStepExecution(stepExecution);
+      stepExecutions.put(stepExecutionId, stepExecutionCopy);
+
+      ExecutionContext stepExecutionContext = stepExecutionCopy.getExecutionContext();
+      if (stepExecutionContext != null) {
+        // copying could in theory be done before acquiring the lock
+        this.stepExecutionContextsById.put(stepExecutionId, copyExecutionContext(stepExecutionContext));
+      }
+    } finally {
+      writeLock.unlock();
+    }
+  }
+
+  void updateStepExecution(StepExecution stepExecution) {
+    Long jobExecutionId = stepExecution.getJobExecutionId();
+    Long stepExecutionId = stepExecution.getId();
+    WriteLock writeLock = this.instanceLock.writeLock();
+    try {
+      Map<Long, StepExecution> setpExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
+      Objects.requireNonNull(setpExecutions, "step executions for given job execution are expected to be already saved");
+
+      StepExecution persistedExecution = setpExecutions.get(stepExecutionId);
+      Objects.requireNonNull(persistedExecution, "step execution is expected to be already saved");
+
+      if (!persistedExecution.getVersion().equals(stepExecution.getVersion())) {
+        throw new OptimisticLockingFailureException("Attempt to update step execution id="
+                + stepExecutionId + " with wrong version (" + stepExecution.getVersion()
+                + "), where current version is " + persistedExecution.getVersion());
+      }
+
+      stepExecution.incrementVersion();
+
+      StepExecution stepExecutionCopy = copyStepExecution(stepExecution);
+      setpExecutions.put(stepExecutionId, stepExecutionCopy);
+    } finally {
+      writeLock.unlock();
+    }
+  }
+
+  void updateStepExecutionContext(StepExecution stepExecution) {
+    Long stepExecutionId = stepExecution.getId();
+    ExecutionContext stepExecutionContext = stepExecution.getExecutionContext();
+    if (stepExecutionContext != null) {
+      ExecutionContext stepExecutionContextCopy = copyExecutionContext(stepExecutionContext);
+      WriteLock writeLock = this.instanceLock.writeLock();
+      try {
+        this.stepExecutionContextsById.put(stepExecutionId, stepExecutionContextCopy);
+      } finally {
+        writeLock.unlock();
+      }
+    }
+  }
+
+  int countStepExecutions(JobInstance jobInstance, String stepName) {
+    int count = 0;
+    ReadLock readLock = this.instanceLock.readLock();
+    try {
+      for (Map<Long, StepExecution> stepExecutions : this.stepExecutionsByJobExecutionId.values()) {
+        for (StepExecution stepExecution : stepExecutions.values()) {
+          if (stepExecution.getStepName().equals(stepName)) {
+            long jobInstanceId = stepExecution.getJobExecution().getJobInstance().getInstanceId();
+            if (jobInstanceId == jobInstance.getInstanceId()) {
+              count++;
+            }
+          }
+        }
+      }
+    } finally {
+      readLock.unlock();
+    }
+    return count;
   }
 
   private static ExecutionContext copyExecutionContext(ExecutionContext original) {

@@ -1,9 +1,12 @@
 package com.github.marschall.spring.batch.inmemory;
 
+import java.lang.invoke.MethodHandles;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Objects;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.JobParameters;
@@ -14,6 +17,8 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.JobRestartException;
 
 public final class InMemoryJobRepository implements JobRepository {
+
+  private static final Log LOGGER = LogFactory.getLog(MethodHandles.lookup().lookupClass());
 
   private final InMemoryJobStorage storage;
 
@@ -69,32 +74,36 @@ public final class InMemoryJobRepository implements JobRepository {
     validateStepExecution(stepExecution);
 
     stepExecution.setLastUpdated(new Date());
-    // TODO Auto-generated method stub
-
+    this.storage.addStepExecution(stepExecution);
   }
 
   @Override
   public void addAll(Collection<StepExecution> stepExecutions) {
-    // TODO Auto-generated method stub
-
+    for (StepExecution stepExecution : stepExecutions) { // implicit null check
+      this.add(stepExecution);
+    }
   }
 
   @Override
   public void update(StepExecution stepExecution) {
-    // TODO Auto-generated method stub
+    validateStepExecution(stepExecution);
+    Objects.requireNonNull(stepExecution.getId(), "StepExecution must already be saved (have an id assigned)");
 
+    stepExecution.setLastUpdated(new Date());
+    this.storage.updateStepExecution(stepExecution);
+    this.checkForInterruption(stepExecution);
   }
 
   @Override
   public void updateExecutionContext(StepExecution stepExecution) {
-    // TODO Auto-generated method stub
-
+    validateStepExecution(stepExecution);
+    Objects.requireNonNull(stepExecution.getId(), "StepExecution must already be saved (have an id assigned)");
+    this.storage.updateStepExecutionContext(stepExecution);
   }
 
   @Override
   public void updateExecutionContext(JobExecution jobExecution) {
-    // TODO Auto-generated method stub
-
+    this.storage.updateJobExecutionContext(jobExecution);
   }
 
   @Override
@@ -105,14 +114,30 @@ public final class InMemoryJobRepository implements JobRepository {
 
   @Override
   public int getStepExecutionCount(JobInstance jobInstance, String stepName) {
-    // TODO Auto-generated method stub
-    return 0;
+    return this.storage.countStepExecutions(jobInstance, stepName);
   }
 
   @Override
   public JobExecution getLastJobExecution(String jobName, JobParameters jobParameters) {
     // TODO Auto-generated method stub
     return null;
+  }
+
+  /**
+   * Check to determine whether or not the JobExecution that is the parent of
+   * the provided StepExecution has been interrupted. If, after synchronizing
+   * the status with the database, the status has been updated to STOPPING,
+   * then the job has been interrupted.
+   *
+   * @param stepExecution
+   */
+  private void checkForInterruption(StepExecution stepExecution) {
+    JobExecution jobExecution = stepExecution.getJobExecution();
+    this.storage.synchronizeStatus(jobExecution);
+    if (jobExecution.isStopping()) {
+      LOGGER.info("Parent JobExecution " + jobExecution.getId() + " is stopped, so passing message on to StepExecution " + stepExecution.getId());
+      stepExecution.setTerminateOnly();
+    }
   }
 
 }
