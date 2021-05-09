@@ -3,6 +3,7 @@ package com.github.marschall.spring.batch.inmemory;
 import java.lang.invoke.MethodHandles;
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 import java.util.Objects;
 
 import org.apache.commons.logging.Log;
@@ -15,6 +16,7 @@ import org.springframework.batch.core.repository.JobExecutionAlreadyRunningExcep
 import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.JobRestartException;
+import org.springframework.batch.item.ExecutionContext;
 
 public final class InMemoryJobRepository implements JobRepository {
 
@@ -108,8 +110,16 @@ public final class InMemoryJobRepository implements JobRepository {
 
   @Override
   public StepExecution getLastStepExecution(JobInstance jobInstance, String stepName) {
-    // TODO Auto-generated method stub
-    return null;
+    StepExecution latest = this.storage.getLastStepExecution(jobInstance, stepName);
+
+    if (latest != null) {
+      ExecutionContext stepExecutionContext = this.storage.getExecutionContext(latest);
+      latest.setExecutionContext(stepExecutionContext);
+      ExecutionContext jobExecutionContext = this.storage.getExecutionContext(latest.getJobExecution());
+      latest.getJobExecution().setExecutionContext(jobExecutionContext);
+    }
+
+    return latest;
   }
 
   @Override
@@ -119,8 +129,18 @@ public final class InMemoryJobRepository implements JobRepository {
 
   @Override
   public JobExecution getLastJobExecution(String jobName, JobParameters jobParameters) {
-    // TODO Auto-generated method stub
-    return null;
+    JobInstance jobInstance = this.storage.getJobInstance(jobName, jobParameters);
+    if (jobInstance == null) {
+      return null;
+    }
+    JobExecution jobExecution = this.storage.getLastJobExecution(jobInstance);
+
+    if (jobExecution != null) {
+      jobExecution.setExecutionContext(this.storage.getExecutionContext(jobExecution));
+      List<StepExecution> stepExecutions = this.storage.getStepExecutions(jobExecution);
+      jobExecution.addStepExecutions(stepExecutions);
+    }
+    return jobExecution;
   }
 
   /**
