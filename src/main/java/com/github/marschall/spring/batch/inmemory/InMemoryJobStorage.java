@@ -577,7 +577,7 @@ public final class InMemoryJobStorage {
       }
 
       Long stepExecutionId = this.nextStepExecutionId;
-      stepExecution.setId(this.nextStepExecutionId++);
+      stepExecution.setId(this.nextStepExecutionId++);//FIXME
       stepExecution.incrementVersion();
 
       StepExecution stepExecutionCopy = copyStepExecution(stepExecution);
