@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.github.marschall</groupId>
@@ -9,7 +10,7 @@
   <url>https://github.com/marschall/spring-batch-inmemory</url>
   <name>Spring Batch In-Memory</name>
   <description>In-Memory implementations of some Spring Batch interfaces</description>
-  
+
   <developers>
     <developer>
       <id>marschall</id>
@@ -22,7 +23,7 @@
       </roles>
     </developer>
   </developers>
-  
+
   <licenses>
     <license>
       <name>MIT</name>
@@ -40,14 +41,40 @@
     <url>https://github.com/marschall/spring-batch-inmemory/issues</url>
     <system>GitHub Issues</system>
   </issueManagement>
-  
+
   <scm>
     <connection>scm:git:git@github.com:marschall/spring-batch-inmemory.git</connection>
     <developerConnection>scm:git:git@github.com:marschall/spring-batch-inmemory.git</developerConnection>
     <url>${project.url}</url>
     <tag>HEAD</tag>
   </scm>
-  
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>5.7.1</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-framework-bom</artifactId>
+        <version>5.3.6</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-bom</artifactId>
+        <version>2.14.1</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
     <dependency>
       <groupId>org.springframework.batch</groupId>
@@ -59,6 +86,21 @@
       <groupId>org.springframework.batch</groupId>
       <artifactId>spring-batch-test</artifactId>
       <version>${spring.batch.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-test</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
