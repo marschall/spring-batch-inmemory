@@ -49,15 +49,22 @@ public final class InMemoryJobExplorer implements JobExplorer {
     return this.storage.findJobInstancesByJobName(jobName, start, count);
   }
 
+  @Nullable 
   @Override
-  public JobInstance getJobInstance(Long instanceId) {
-    Objects.requireNonNull(instanceId, "instanceId");
-    return this.storage.getJobInstance(instanceId);
+  public JobInstance getJobInstance(@Nullable Long jobInstanceId) {
+    if (jobInstanceId == null) {
+      return null;
+    }
+    return this.storage.getJobInstance(jobInstanceId);
   }
 
+  @Nullable 
   @Override
-  public JobExecution getJobExecution(Long executionId) {
-    Objects.requireNonNull(executionId, "executionId");
+  public JobExecution getJobExecution(@Nullable Long executionId) {
+    if (executionId == null) {
+      return null;
+    }
+    // FIXME add dependencies
     return this.storage.getJobExecution(executionId);
   }
 
@@ -67,6 +74,7 @@ public final class InMemoryJobExplorer implements JobExplorer {
     return this.storage.getLastJobExecution(jobInstance);
   }
 
+  @Nullable
   @Override
   public JobInstance getLastJobInstance(String jobName) {
     Objects.requireNonNull(jobName, "jobName");
@@ -119,8 +127,10 @@ public final class InMemoryJobExplorer implements JobExplorer {
   }
 
   @Override
-  public int getJobInstanceCount(String jobName) throws NoSuchJobException {
-    Objects.requireNonNull(jobName, "jobName");
+  public int getJobInstanceCount(@Nullable String jobName) throws NoSuchJobException {
+    if (jobName == null) {
+      throw new NoSuchJobException("No job instances for job name null were found");
+    }
     return this.storage.getJobInstanceCount(jobName);
   }
 

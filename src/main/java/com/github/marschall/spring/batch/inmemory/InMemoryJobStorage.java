@@ -91,7 +91,7 @@ public final class InMemoryJobStorage {
 
   JobExecution createJobExecution(JobInstance jobInstance, JobParameters jobParameters, String jobConfigurationLocation) {
 
-    Long jobExecutionId = this.nextJobExecutionId++;
+    Long jobExecutionId = this.nextJobExecutionId++;//FIXME
     JobExecution jobExecution = new JobExecution(jobInstance, jobExecutionId, jobParameters, jobConfigurationLocation);
     ExecutionContext executionContext = new ExecutionContext();
     jobExecution.setExecutionContext(executionContext);

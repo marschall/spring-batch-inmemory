@@ -17,6 +17,7 @@ import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteExcep
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.batch.item.ExecutionContext;
+import org.springframework.lang.Nullable;
 
 public final class InMemoryJobRepository implements JobRepository {
 
@@ -108,6 +109,7 @@ public final class InMemoryJobRepository implements JobRepository {
     this.storage.updateJobExecutionContext(jobExecution);
   }
 
+  @Nullable
   @Override
   public StepExecution getLastStepExecution(JobInstance jobInstance, String stepName) {
     StepExecution lastExecution = this.storage.getLastStepExecution(jobInstance, stepName);
@@ -128,6 +130,7 @@ public final class InMemoryJobRepository implements JobRepository {
     return this.storage.countStepExecutions(jobInstance, stepName);
   }
 
+  @Nullable
   @Override
   public JobExecution getLastJobExecution(String jobName, JobParameters jobParameters) {
     JobInstance jobInstance = this.storage.getJobInstance(jobName, jobParameters);
