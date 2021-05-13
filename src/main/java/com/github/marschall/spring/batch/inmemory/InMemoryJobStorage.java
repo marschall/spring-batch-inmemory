@@ -15,8 +15,6 @@ import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 import java.util.regex.Pattern;
 
 import org.springframework.batch.core.BatchStatus;
@@ -30,7 +28,6 @@ import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteExcep
 import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.dao.OptimisticLockingFailureException;
-import org.springframework.lang.Nullable;
 
 public final class InMemoryJobStorage {
 
@@ -414,11 +411,11 @@ public final class InMemoryJobStorage {
         return List.of();
       }
       return jobInstances.stream()
-          .map(JobInstanceAndParameters::getJobInstance)
-          .sorted(Comparator.comparingLong(JobInstance::getInstanceId))
-          .skip(start)
-          .limit(count)
-          .collect(toList());
+                         .map(JobInstanceAndParameters::getJobInstance)
+                         .sorted(Comparator.comparingLong(JobInstance::getInstanceId))
+                         .skip(start)
+                         .limit(count)
+                         .collect(toList());
     } finally {
       readLock.unlock();
     }
@@ -445,10 +442,10 @@ public final class InMemoryJobStorage {
     }
 
     return jobInstancesUnstorted.stream()
-        .sorted(Comparator.comparingLong(JobInstance::getInstanceId))
-        .skip(start)
-        .limit(count)
-        .collect(toList());
+                                .sorted(Comparator.comparingLong(JobInstance::getInstanceId))
+                                .skip(start)
+                                .limit(count)
+                                .collect(toList());
   }
 
   private static boolean isExactPattern(String s) {
