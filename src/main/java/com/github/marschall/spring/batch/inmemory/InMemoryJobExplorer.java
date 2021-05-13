@@ -9,6 +9,7 @@ import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.NoSuchJobException;
+import org.springframework.lang.Nullable;
 
 public final class InMemoryJobExplorer implements JobExplorer {
 
@@ -72,16 +73,36 @@ public final class InMemoryJobExplorer implements JobExplorer {
     return this.storage.getLastJobInstance(jobName);
   }
 
+  @Nullable
   @Override
-  public StepExecution getStepExecution(Long jobExecutionId, Long stepExecutionId) {
-    // TODO Auto-generated method stub
-    return null;
+  public StepExecution getStepExecution(@Nullable Long jobExecutionId, @Nullable Long stepExecutionId) {
+    if (jobExecutionId == null || stepExecutionId == null) {
+      return null;
+    }
+    
+    JobExecution jobExecution = this.storage.getJobExecution(jobExecutionId);
+    if (jobExecution == null) {
+      return null;
+    }
+    setJobExecutionDependencies(jobExecution);
+    StepExecution stepExecution = this.storage.getStepExecution(jobExecutionId, stepExecutionId);
+    if (stepExecution == null) {
+      return null;
+    }
+    setStepExecutionDependencies(stepExecution);
+    return stepExecution;
   }
 
   @Override
   public List<JobExecution> getJobExecutions(JobInstance jobInstance) {
-    // TODO Auto-generated method stub
-    return null;
+    List<JobExecution> executions = this.storage.findJobExecutions(jobInstance);
+    for (JobExecution jobExecution : executions) {
+      setJobExecutionDependencies(jobExecution);
+      for (StepExecution stepExecution : jobExecution.getStepExecutions()) {
+        setStepExecutionDependencies(stepExecution);
+      }
+    }
+    return executions;
   }
 
   @Override
@@ -105,11 +126,14 @@ public final class InMemoryJobExplorer implements JobExplorer {
    * Find all dependencies for a JobExecution, including JobInstance (which
    * requires JobParameters) plus StepExecutions
    */
-  private void getJobExecutionDependencies(JobExecution jobExecution) {
+  private void setJobExecutionDependencies(JobExecution jobExecution) {
     List<StepExecution> stepExecutions = this.storage.getStepExecutions(jobExecution);
     jobExecution.addStepExecutions(stepExecutions);
     jobExecution.setExecutionContext(this.storage.getExecutionContext(jobExecution));
+  }
 
+  private void setStepExecutionDependencies(StepExecution stepExecution) {
+    stepExecution.setExecutionContext(this.storage.getStepExecutionContext(stepExecution));
   }
 
 }

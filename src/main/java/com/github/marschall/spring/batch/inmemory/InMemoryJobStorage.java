@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
@@ -26,6 +28,7 @@ import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteExcep
 import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.lang.Nullable;
 
 public final class InMemoryJobStorage {
 
@@ -37,7 +40,7 @@ public final class InMemoryJobStorage {
   private final Map<Long, ExecutionContext> stepExecutionContextsById;
   private final Map<Long, Map<Long, StepExecution>> stepExecutionsByJobExecutionId;
 
-  private final ReentrantReadWriteLock instanceLock;
+  private final ReadWriteLock instanceLock;
   private long nextJobInstanceId;
   private long nextJobExecutionId;
   private long nextStepExecutionId;
@@ -60,7 +63,7 @@ public final class InMemoryJobStorage {
     Objects.requireNonNull(jobName, "jobName");
     Objects.requireNonNull(jobParameters, "jobParameters");
 
-    WriteLock writeLock = this.instanceLock.writeLock();
+    Lock writeLock = this.instanceLock.writeLock();
     try {
       List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
       if (instancesAndParameters != null) {
@@ -96,7 +99,7 @@ public final class InMemoryJobStorage {
     jobExecution.setLastUpdated(new Date());
     jobExecution.incrementVersion();
 
-    WriteLock writeLock = this.instanceLock.writeLock();
+    Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
     try {
       this.jobExecutionsById.put(jobExecutionId, copyJobExecution(jobExecution));
@@ -110,7 +113,7 @@ public final class InMemoryJobStorage {
   }
 
   ExecutionContext getExecutionContext(JobExecution jobExecution) {
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       ExecutionContext executionContext = this.jobExecutionContextsById.get(jobExecution.getId());
@@ -122,7 +125,7 @@ public final class InMemoryJobStorage {
 
   JobExecution createJobExecution(String jobName, JobParameters jobParameters)
           throws JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException {
-    WriteLock writeLock = this.instanceLock.writeLock();
+    Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
     try {
       // Find all jobs matching the runtime information.
@@ -183,10 +186,27 @@ public final class InMemoryJobStorage {
   }
 
   JobExecution getLastJobExecution(JobInstance jobInstance) {
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       return this.getLastJobExecutionUnlocked(jobInstance);
+    } finally {
+      readLock.unlock();
+    }
+  }
+  
+  List<JobExecution> findJobExecutions(JobInstance jobInstance) {
+    Lock readLock = this.instanceLock.readLock();
+    readLock.lock();
+    try {
+      List<Long> jobExecutionIds = this.jobInstanceToExecutions.get(jobInstance.getId());
+      List<JobExecution> jobExecutions = new ArrayList<>(jobExecutionIds.size());
+      for (Long jobExecutionId : jobExecutionIds) {
+        JobExecution jobExecution = this.jobExecutionsById.get(jobExecutionId);
+        jobExecutions.add(copyJobExecution(jobExecution));
+      }
+      jobExecutions.sort(Comparator.comparing(JobExecution::getId));
+      return jobExecutions;
     } finally {
       readLock.unlock();
     }
@@ -198,7 +218,7 @@ public final class InMemoryJobStorage {
     this.synchronizeStatus(jobExecution);
     Long id = jobExecution.getId();
 
-    WriteLock writeLock = this.instanceLock.writeLock();
+    Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
     try {
       JobExecution persisted = this.jobExecutionsById.get(id);
@@ -227,7 +247,7 @@ public final class InMemoryJobStorage {
     ExecutionContext jobExecutionContext = jobExecution.getExecutionContext();
     if (jobExecutionContext != null) {
       ExecutionContext jobExecutionContextCopy = copyExecutionContext(jobExecutionContext);
-      WriteLock writeLock = this.instanceLock.writeLock();
+      Lock writeLock = this.instanceLock.writeLock();
       try {
         this.jobExecutionContextsById.put(jobExecutionId, jobExecutionContextCopy);
       } finally {
@@ -237,7 +257,7 @@ public final class InMemoryJobStorage {
   }
 
   void synchronizeStatus(JobExecution jobExecution) {
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       JobExecution presisted = this.jobExecutionsById.get(jobExecution.getId());
@@ -255,7 +275,7 @@ public final class InMemoryJobStorage {
 
   JobInstance getJobInstance(Long instanceId) {
     Objects.requireNonNull(instanceId, "instanceId");
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       return this.instancesById.get(instanceId);
@@ -265,7 +285,7 @@ public final class InMemoryJobStorage {
   }
 
   JobInstance getJobInstance(String jobName, JobParameters jobParameters) {
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       return this.getJobInstanceUnlocked(jobName, jobParameters);
@@ -287,7 +307,7 @@ public final class InMemoryJobStorage {
   }
 
   boolean isJobInstanceExists(String jobName, JobParameters jobParameters) {
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       return this.getJobInstanceUnlocked(jobName, jobParameters) != null;
@@ -297,7 +317,7 @@ public final class InMemoryJobStorage {
   }
 
   JobInstance getLastJobInstance(String jobName) {
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
 
     try {
@@ -323,10 +343,20 @@ public final class InMemoryJobStorage {
     }
   }
 
-
-  JobExecution getJobExecution(Long executionId) {
-    // TODO Auto-generated method stub
-    return null;
+  JobExecution getJobExecution(Long jobExecutionId) {
+    Lock readLock = this.instanceLock.readLock();
+    readLock.lock();
+    JobExecution jobExecution;
+    try {
+      jobExecution = this.jobExecutionsById.get(jobExecutionId);
+    } finally {
+      readLock.unlock();
+    }
+    if (jobExecution != null) {
+      return copyJobExecution(jobExecution);
+    } else {
+      return null;
+    }
   }
 
   List<JobInstance> findJobInstancesByJobName(String jobName, int start, int count) {
@@ -353,7 +383,7 @@ public final class InMemoryJobStorage {
       }
     }
 
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       List<JobInstanceAndParameters> jobInstances = this.jobInstancesByName.get(jobName);
@@ -377,7 +407,7 @@ public final class InMemoryJobStorage {
     Pattern pattern = Pattern.compile(jobName.replaceAll("\\*", ".*"));
     List<JobInstance> jobInstancesUnstorted = new ArrayList<>();
 
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       for (Entry<String, List<JobInstanceAndParameters>> entries : this.jobInstancesByName.entrySet()) {
@@ -406,7 +436,7 @@ public final class InMemoryJobStorage {
 
   List<String> getJobNames() {
     List<String> jobNames = new ArrayList<>();
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       jobNames = new ArrayList<>(this.jobInstancesByName.keySet());
@@ -418,7 +448,7 @@ public final class InMemoryJobStorage {
   }
 
   int getJobInstanceCount(String jobName) throws NoSuchJobException {
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
@@ -432,10 +462,9 @@ public final class InMemoryJobStorage {
     }
   }
 
-
   List<StepExecution> getStepExecutions(JobExecution jobExecution) {
     Long jobExecutionId = jobExecution.getId();
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       Map<Long, StepExecution> executions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
@@ -453,9 +482,29 @@ public final class InMemoryJobStorage {
       readLock.unlock();
     }
   }
+  
+  StepExecution getStepExecution(Long jobExecutionId, Long stepExecutionId) {
+    Lock readLock = this.instanceLock.readLock();
+    readLock.lock();
+    StepExecution stepExecution;
+    try {
+      Map<Long, StepExecution> stepExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
+      if (stepExecutions == null) {
+        return null;
+      }
+      stepExecution = stepExecutions.get(stepExecutionId);
+    } finally {
+      readLock.unlock();
+    }
+    if (stepExecution != null) {
+      return copyStepExecution(stepExecution);
+    } else {
+      return null;
+    }
+  }
 
-  ExecutionContext getExecutionContext(StepExecution stepExecution) {
-    ReadLock readLock = this.instanceLock.readLock();
+  ExecutionContext getStepExecutionContext(StepExecution stepExecution) {
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       ExecutionContext executionContext = this.stepExecutionContextsById.get(stepExecution.getId());
@@ -468,7 +517,7 @@ public final class InMemoryJobStorage {
 
   StepExecution getLastStepExecution(JobInstance jobInstance, String stepName) {
     StepExecution latest = null;
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       List<Long> jobExecutionIds = this.jobInstanceToExecutions.get(jobInstance.getInstanceId());
@@ -499,7 +548,7 @@ public final class InMemoryJobStorage {
 
   void addStepExecution(StepExecution stepExecution) {
     Long jobExecutionId = stepExecution.getJobExecutionId();
-    WriteLock writeLock = this.instanceLock.writeLock();
+    Lock writeLock = this.instanceLock.writeLock();
     try {
       Map<Long, StepExecution> stepExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
       if (stepExecutions == null) {
@@ -527,7 +576,7 @@ public final class InMemoryJobStorage {
   void updateStepExecution(StepExecution stepExecution) {
     Long jobExecutionId = stepExecution.getJobExecutionId();
     Long stepExecutionId = stepExecution.getId();
-    WriteLock writeLock = this.instanceLock.writeLock();
+    Lock writeLock = this.instanceLock.writeLock();
     try {
       Map<Long, StepExecution> setpExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
       Objects.requireNonNull(setpExecutions, "step executions for given job execution are expected to be already saved");
@@ -555,7 +604,7 @@ public final class InMemoryJobStorage {
     ExecutionContext stepExecutionContext = stepExecution.getExecutionContext();
     if (stepExecutionContext != null) {
       ExecutionContext stepExecutionContextCopy = copyExecutionContext(stepExecutionContext);
-      WriteLock writeLock = this.instanceLock.writeLock();
+      Lock writeLock = this.instanceLock.writeLock();
       try {
         this.stepExecutionContextsById.put(stepExecutionId, stepExecutionContextCopy);
       } finally {
@@ -566,7 +615,7 @@ public final class InMemoryJobStorage {
 
   int countStepExecutions(JobInstance jobInstance, String stepName) {
     int count = 0;
-    ReadLock readLock = this.instanceLock.readLock();
+    Lock readLock = this.instanceLock.readLock();
     try {
       List<Long> jobExecutionIds = this.jobInstanceToExecutions.get(jobInstance.getInstanceId());
       for (Long jobExecutionId : jobExecutionIds) {

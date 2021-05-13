@@ -113,7 +113,7 @@ public final class InMemoryJobRepository implements JobRepository {
     StepExecution lastExecution = this.storage.getLastStepExecution(jobInstance, stepName);
 
     if (lastExecution != null) {
-      ExecutionContext stepExecutionContext = this.storage.getExecutionContext(lastExecution);
+      ExecutionContext stepExecutionContext = this.storage.getStepExecutionContext(lastExecution);
       lastExecution.setExecutionContext(stepExecutionContext);
 
       ExecutionContext jobExecutionContext = this.storage.getExecutionContext(lastExecution.getJobExecution());
