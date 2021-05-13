@@ -587,6 +587,7 @@ public final class InMemoryJobStorage {
   }
 
   private static JobExecution copyJobExecution(JobExecution original) {
+    // FIXME maybe we should clear the execution context
     return new JobExecution(original);
   }
 
@@ -606,6 +607,7 @@ public final class InMemoryJobStorage {
     copy.setEndTime(original.getEndTime());
     copy.setLastUpdated(original.getLastUpdated());
 
+    // FIXME likely we should not set this here as it gets set later
     copy.setExecutionContext(copyExecutionContext(original.getExecutionContext()));
     copy.setExitStatus(original.getExitStatus());
     if (original.isTerminateOnly()) {
