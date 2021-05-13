@@ -6,10 +6,12 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -124,7 +126,7 @@ public final class InMemoryJobStorage {
   }
 
   JobExecution createJobExecution(String jobName, JobParameters jobParameters)
-          throws JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException {
+      throws JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException {
     Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
     try {
@@ -144,13 +146,13 @@ public final class InMemoryJobStorage {
             BatchStatus status = jobExecution.getStatus();
             if (status == BatchStatus.UNKNOWN) {
               throw new JobRestartException("Cannot restart job from UNKNOWN status. "
-                      + "The last execution ended with a failure that could not be rolled back, "
-                      + "so it may be dangerous to proceed. Manual intervention is probably necessary.");
+                  + "The last execution ended with a failure that could not be rolled back, "
+                  + "so it may be dangerous to proceed. Manual intervention is probably necessary.");
             }
             if (!jobExecution.getJobParameters().getParameters().isEmpty() && ((status == BatchStatus.COMPLETED) || (status == BatchStatus.ABANDONED))) {
               throw new JobInstanceAlreadyCompleteException(
-                      "A job instance already exists and is complete for parameters=" + jobParameters
-                      + ".  If you want to run this job again, change the parameters.");
+                  "A job instance already exists and is complete for parameters=" + jobParameters
+                  + ".  If you want to run this job again, change the parameters.");
             }
           }
         }
@@ -194,7 +196,28 @@ public final class InMemoryJobStorage {
       readLock.unlock();
     }
   }
-  
+
+  Set<JobExecution> findRunningJobExecutions(String jobName) {
+    Lock readLock = this.instanceLock.readLock();
+    readLock.lock();
+    Set<JobExecution> runningJobExecutions = new HashSet<>();
+    try {
+      List<JobInstanceAndParameters> jobInstancesAndParameters = this.jobInstancesByName.get(jobName);
+      for (JobInstanceAndParameters jobInstanceAndParameters : jobInstancesAndParameters) {
+        List<Long> jobExecutionIds = this.jobInstanceToExecutions.get(jobInstanceAndParameters.getJobInstance().getId());
+        for (Long jobExecutionId : jobExecutionIds) {
+          JobExecution jobExecution = this.jobExecutionsById.get(jobExecutionId);
+          if (jobExecution.isRunning()) {
+            runningJobExecutions.add(copyJobExecution(jobExecution));
+          }
+        }
+      }
+      return runningJobExecutions;
+    } finally {
+      readLock.unlock();
+    }
+  }
+
   List<JobExecution> findJobExecutions(JobInstance jobInstance) {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
@@ -391,11 +414,11 @@ public final class InMemoryJobStorage {
         return List.of();
       }
       return jobInstances.stream()
-                         .map(JobInstanceAndParameters::getJobInstance)
-                         .sorted(Comparator.comparingLong(JobInstance::getInstanceId))
-                         .skip(start)
-                         .limit(count)
-                         .collect(toList());
+          .map(JobInstanceAndParameters::getJobInstance)
+          .sorted(Comparator.comparingLong(JobInstance::getInstanceId))
+          .skip(start)
+          .limit(count)
+          .collect(toList());
     } finally {
       readLock.unlock();
     }
@@ -422,10 +445,10 @@ public final class InMemoryJobStorage {
     }
 
     return jobInstancesUnstorted.stream()
-                                .sorted(Comparator.comparingLong(JobInstance::getInstanceId))
-                                .skip(start)
-                                .limit(count)
-                                .collect(toList());
+        .sorted(Comparator.comparingLong(JobInstance::getInstanceId))
+        .skip(start)
+        .limit(count)
+        .collect(toList());
   }
 
   private static boolean isExactPattern(String s) {
@@ -482,7 +505,7 @@ public final class InMemoryJobStorage {
       readLock.unlock();
     }
   }
-  
+
   StepExecution getStepExecution(Long jobExecutionId, Long stepExecutionId) {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
@@ -529,8 +552,8 @@ public final class InMemoryJobStorage {
             } else if (latest.getStartTime().before(stepExecution.getStartTime())) {
               latest = stepExecution;
             } else if (latest.getStartTime().equals(stepExecution.getStartTime())
-                    // Use step execution ID as the tie breaker if start time is identical
-                    && (latest.getId() < stepExecution.getId())) {
+                // Use step execution ID as the tie breaker if start time is identical
+                && (latest.getId() < stepExecution.getId())) {
               latest = stepExecution;
             }
           }
@@ -586,8 +609,8 @@ public final class InMemoryJobStorage {
 
       if (!persistedExecution.getVersion().equals(stepExecution.getVersion())) {
         throw new OptimisticLockingFailureException("Attempt to update step execution id="
-                + stepExecutionId + " with wrong version (" + stepExecution.getVersion()
-                + "), where current version is " + persistedExecution.getVersion());
+            + stepExecutionId + " with wrong version (" + stepExecution.getVersion()
+            + "), where current version is " + persistedExecution.getVersion());
       }
 
       stepExecution.incrementVersion();

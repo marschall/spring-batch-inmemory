@@ -106,9 +106,11 @@ public final class InMemoryJobExplorer implements JobExplorer {
   }
 
   @Override
-  public Set<JobExecution> findRunningJobExecutions(String jobName) {
-    // TODO Auto-generated method stub
-    return null;
+  public Set<JobExecution> findRunningJobExecutions(@Nullable String jobName) {
+    if (jobName == null) {
+      return Set.of();
+    }
+    return this.storage.findRunningJobExecutions(jobName);
   }
 
   @Override
