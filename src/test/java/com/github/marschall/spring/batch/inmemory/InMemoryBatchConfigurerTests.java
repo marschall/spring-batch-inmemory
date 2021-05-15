@@ -1,8 +1,9 @@
 package com.github.marschall.spring.batch.inmemory;
 
-import static org.junit.Assert.fail;
 
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.configuration.annotation.BatchConfigurer;
 import org.springframework.batch.core.configuration.annotation.SimpleBatchConfiguration;
 import org.springframework.batch.test.JobLauncherTestUtils;

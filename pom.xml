@@ -82,11 +82,12 @@
       <version>${spring.batch.version}</version>
       <scope>provided</scope>
     </dependency>
+    <!-- suppressed javadoc warnings -->
     <dependency>
-      <groupId>org.springframework.batch</groupId>
-      <artifactId>spring-batch-test</artifactId>
-      <version>${spring.batch.version}</version>
-      <scope>test</scope>
+      <groupId>com.google.code.findbugs</groupId>
+      <artifactId>jsr305</artifactId>
+      <version>3.0.2</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.springframework.batch</groupId>
