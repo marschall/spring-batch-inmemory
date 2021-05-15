@@ -64,29 +64,33 @@ public final class InMemoryJobStorage {
 
     Lock writeLock = this.instanceLock.writeLock();
     try {
-      List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
-      if (instancesAndParameters != null) {
-        for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
-          if (instanceAndParametes.getJobParameters().equals(jobParameters)) {
-            throw new IllegalStateException("JobInstance must not already exist");
-          }
-        }
-      }
-
-      JobInstance jobInstance = new JobInstance(this.nextJobInstanceId++, jobName);
-      jobInstance.incrementVersion();
-
-      this.instancesById.put(jobInstance.getId(), jobInstance);
-      if (instancesAndParameters == null) {
-        instancesAndParameters = new ArrayList<>();
-        this.jobInstancesByName.put(jobName, instancesAndParameters);
-      }
-      instancesAndParameters.add(new JobInstanceAndParameters(jobInstance, jobParameters));
-
-      return jobInstance;
+      return this.createJobInstanceUnlocked(jobName, jobParameters);
     } finally {
       writeLock.unlock();
     }
+  }
+
+  private JobInstance createJobInstanceUnlocked(String jobName, JobParameters jobParameters) {
+    List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
+    if (instancesAndParameters != null) {
+      for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
+        if (instanceAndParametes.getJobParameters().equals(jobParameters)) {
+          throw new IllegalStateException("JobInstance must not already exist");
+        }
+      }
+    }
+
+    JobInstance jobInstance = new JobInstance(this.nextJobInstanceId++, jobName);
+    jobInstance.incrementVersion();
+
+    this.instancesById.put(jobInstance.getId(), jobInstance);
+    if (instancesAndParameters == null) {
+      instancesAndParameters = new ArrayList<>();
+      this.jobInstancesByName.put(jobName, instancesAndParameters);
+    }
+    instancesAndParameters.add(new JobInstanceAndParameters(jobInstance, jobParameters));
+
+    return jobInstance;
   }
 
   JobExecution createJobExecution(JobInstance jobInstance, JobParameters jobParameters, String jobConfigurationLocation) {
@@ -129,11 +133,13 @@ public final class InMemoryJobStorage {
     try {
       // Find all jobs matching the runtime information.
       JobInstance jobInstance = this.getJobInstanceUnlocked(jobName, jobParameters);
+      ExecutionContext executionContext;
 
 
       // existing job instance found
       if (jobInstance != null) {
         List<Long> executionIds = this.jobInstanceToExecutions.get(jobInstance.getInstanceId());
+        JobExecution lastJobExecution = null;
         if (executionIds != null) {
           for (Long executionId : executionIds) {
             JobExecution jobExecution = this.jobExecutionsById.get(executionId);
@@ -151,17 +157,40 @@ public final class InMemoryJobStorage {
                   "A job instance already exists and is complete for parameters=" + jobParameters
                   + ".  If you want to run this job again, change the parameters.");
             }
+            if ((lastJobExecution == null) || lastJobExecution.getCreateTime().before(jobExecution.getCreateTime())) {
+              lastJobExecution = jobExecution;
+            }
           }
         }
 
-
+        executionContext = copyExecutionContext(this.jobExecutionContextsById.get(lastJobExecution.getId()));
       } else {
         // no job found, create one
-
+        jobInstance = this.createJobInstanceUnlocked(jobName, jobParameters);
+        executionContext = new ExecutionContext();
       }
+
+      JobExecution jobExecution = new JobExecution(jobInstance, jobParameters, null);
+      jobExecution.setExecutionContext(executionContext);
+      jobExecution.setLastUpdated(new Date(System.currentTimeMillis()));
+
+      // Save the JobExecution so that it picks up an ID (useful for clients
+      // monitoring asynchronous executions):
+      this.saveJobExecutionUnlocked(jobExecution);
+      this.updateJobExecutionContextUnlocked(jobExecution.getId(), executionContext);
+
+      return jobExecution;
     } finally {
       writeLock.unlock();
     }
+  }
+
+
+  private void saveJobExecutionUnlocked(JobExecution jobExecution) {
+    long jobExecutionId = this.nextJobExecutionId++;
+    jobExecution.setId(jobExecutionId);
+    jobExecution.incrementVersion();
+    this.jobExecutionsById.put(jobExecutionId, copyJobExecution(jobExecution));
   }
 
   private JobExecution getLastJobExecutionUnlocked(JobInstance jobInstance) {
@@ -266,14 +295,18 @@ public final class InMemoryJobStorage {
     Long jobExecutionId = jobExecution.getId();
     ExecutionContext jobExecutionContext = jobExecution.getExecutionContext();
     if (jobExecutionContext != null) {
-      ExecutionContext jobExecutionContextCopy = copyExecutionContext(jobExecutionContext);
       Lock writeLock = this.instanceLock.writeLock();
       try {
-        this.jobExecutionContextsById.put(jobExecutionId, jobExecutionContextCopy);
+        this.updateJobExecutionContextUnlocked(jobExecutionId, jobExecutionContext);
       } finally {
         writeLock.unlock();
       }
     }
+  }
+
+  private void updateJobExecutionContextUnlocked(Long jobExecutionId, ExecutionContext jobExecutionContext) {
+    ExecutionContext jobExecutionContextCopy = copyExecutionContext(jobExecutionContext);
+    this.jobExecutionContextsById.put(jobExecutionId, jobExecutionContextCopy);
   }
 
   void synchronizeStatus(JobExecution jobExecution) {
