@@ -13,8 +13,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import com.github.marschall.spring.batch.inmemory.configuration.LoggingJobConfiguration;
+
 @SpringBatchTest
-//@ContextConfiguration(classes = TestConfiguration.class)
 class InMemoryBatchConfigurationTests {
 
   @Autowired
@@ -29,7 +30,7 @@ class InMemoryBatchConfigurationTests {
   }
 
   @Configuration
-  @Import({TestJobConfiguration.class, InMemoryBatchConfiguration.class})
+  @Import({LoggingJobConfiguration.class, InMemoryBatchConfiguration.class})
   static class ContextConfiguration {
 
     @Bean

@@ -27,7 +27,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 @Configuration
 public class InMemoryBatchConfiguration {
 
-
   private final InMemoryJobStorage storge;
 
   public InMemoryBatchConfiguration() {

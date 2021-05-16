@@ -95,24 +95,24 @@ public final class InMemoryJobStorage {
 
   JobExecution createJobExecution(JobInstance jobInstance, JobParameters jobParameters, String jobConfigurationLocation) {
 
-    Long jobExecutionId = this.nextJobExecutionId++;//FIXME
-    JobExecution jobExecution = new JobExecution(jobInstance, jobExecutionId, jobParameters, jobConfigurationLocation);
-    ExecutionContext executionContext = new ExecutionContext();
-    jobExecution.setExecutionContext(executionContext);
-    jobExecution.setLastUpdated(new Date());
-    jobExecution.incrementVersion();
-
     Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
     try {
+      Long jobExecutionId = this.nextJobExecutionId++;
+      JobExecution jobExecution = new JobExecution(jobInstance, jobExecutionId, jobParameters, jobConfigurationLocation);
+      ExecutionContext executionContext = new ExecutionContext();
+      jobExecution.setExecutionContext(executionContext);
+      jobExecution.setLastUpdated(new Date());
+      jobExecution.incrementVersion();
+
       this.jobExecutionsById.put(jobExecutionId, copyJobExecution(jobExecution));
       this.jobExecutionContextsById.put(jobExecutionId, copyExecutionContext(executionContext));
       this.jobInstanceToExecutions.computeIfAbsent(jobInstance.getInstanceId(), id -> new ArrayList<>()).add(jobExecutionId);
+      return jobExecution;
     } finally {
       writeLock.unlock();
     }
 
-    return jobExecution;
   }
 
   ExecutionContext getExecutionContext(JobExecution jobExecution) {
@@ -184,7 +184,6 @@ public final class InMemoryJobStorage {
       writeLock.unlock();
     }
   }
-
 
   private void saveJobExecutionUnlocked(JobExecution jobExecution) {
     long jobExecutionId = this.nextJobExecutionId++;
@@ -609,8 +608,8 @@ public final class InMemoryJobStorage {
         this.stepExecutionsByJobExecutionId.put(jobExecutionId, stepExecutions);
       }
 
-      Long stepExecutionId = this.nextStepExecutionId;
-      stepExecution.setId(this.nextStepExecutionId++);//FIXME
+      Long stepExecutionId = this.nextStepExecutionId++;
+      stepExecution.setId(stepExecutionId);
       stepExecution.incrementVersion();
 
       StepExecution stepExecutionCopy = copyStepExecution(stepExecution);
@@ -718,6 +717,25 @@ public final class InMemoryJobStorage {
     copy.setFilterCount(original.getFilterCount());
 
     return copy;
+  }
+
+  void clear() {
+    Lock writeLock = this.instanceLock.writeLock();
+    writeLock.lock();
+    try {
+      this.instancesById.clear();
+      this.jobInstancesByName.clear();
+      this.jobExecutionsById.clear();
+      this.jobExecutionContextsById.clear();
+      this.stepExecutionContextsById.clear();
+      this.jobInstanceToExecutions.clear();
+      this.stepExecutionsByJobExecutionId.clear();
+      this.nextJobInstanceId = 1L;
+      this.nextJobExecutionId = 1L;
+      this.nextStepExecutionId = 1L;
+    } finally {
+      writeLock.unlock();
+    }
   }
 
   static final class JobInstanceAndParameters {

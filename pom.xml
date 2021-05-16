@@ -54,7 +54,7 @@
       <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
-        <version>5.7.1</version>
+        <version>5.7.2</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -94,6 +94,12 @@
       <artifactId>spring-batch-test</artifactId>
       <version>${spring.batch.version}</version>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>junit</groupId>
+          <artifactId>junit</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -120,6 +126,12 @@
       <artifactId>log4j-jcl</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <version>1.4.200</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -136,6 +148,7 @@
           <release>11</release>
           <links>
             <link>https://docs.oracle.com/en/java/javase/11/docs/api/</link>
+            <link>https://docs.spring.io/spring-batch/docs/current/api/</link>
           </links>
           <tags>
             <tag>
@@ -227,10 +240,6 @@
         <plugin>
           <artifactId>maven-scm-plugin</artifactId>
           <version>1.11.2</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-shade-plugin</artifactId>
-          <version>3.2.4</version>
         </plugin>
         <plugin>
           <artifactId>maven-site-plugin</artifactId>

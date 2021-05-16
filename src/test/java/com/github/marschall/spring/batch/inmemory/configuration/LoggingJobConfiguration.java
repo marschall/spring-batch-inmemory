@@ -1,4 +1,4 @@
-package com.github.marschall.spring.batch.inmemory;
+package com.github.marschall.spring.batch.inmemory.configuration;
 
 import java.lang.invoke.MethodHandles;
 
@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class TestJobConfiguration {
+public class LoggingJobConfiguration {
 
   private static final Log LOGGER = LogFactory.getLog(MethodHandles.lookup().lookupClass());
 
