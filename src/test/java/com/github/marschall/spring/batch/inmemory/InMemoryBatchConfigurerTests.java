@@ -32,8 +32,8 @@ class InMemoryBatchConfigurerTests {
 
   @Configuration
   @EnableBatchProcessing
-  @Import(SimpleBatchConfiguration.class)
-  static class TestConfiguration {
+  @Import({TestJobConfiguration.class, SimpleBatchConfiguration.class})
+  static class ContextConfiguration {
 
     @Bean
     BatchConfigurer batchConfigurer() {

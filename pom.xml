@@ -311,6 +311,6 @@
   <properties>
     <project.reporting.outputEncoding>utf-8</project.reporting.outputEncoding>
     <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
-    <spring.batch.version>4.3.0</spring.batch.version>
+    <spring.batch.version>4.3.2</spring.batch.version>
   </properties>
 </project>

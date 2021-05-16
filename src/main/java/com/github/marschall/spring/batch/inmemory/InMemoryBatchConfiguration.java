@@ -12,6 +12,7 @@ import org.springframework.batch.core.launch.support.SimpleJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.scope.JobScope;
 import org.springframework.batch.core.scope.StepScope;
+import org.springframework.batch.support.transaction.ResourcelessTransactionManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -25,9 +26,9 @@ import org.springframework.transaction.PlatformTransactionManager;
  */
 @Configuration
 public class InMemoryBatchConfiguration {
-  
-  
-  private InMemoryJobStorage storge;
+
+
+  private final InMemoryJobStorage storge;
 
   public InMemoryBatchConfiguration() {
     this.storge = new InMemoryJobStorage();
@@ -39,8 +40,9 @@ public class InMemoryBatchConfiguration {
   }
 
   @Bean
-  public StepBuilderFactory stepBuilders(PlatformTransactionManager txManager) {
-    return new StepBuilderFactory(this.jobRepository(), txManager);
+  public StepBuilderFactory stepBuilders() {
+    // the in-memory job repository and job explorer do not support transaction
+    return new StepBuilderFactory(this.jobRepository(), new ResourcelessTransactionManager());
   }
 
   @Bean
@@ -64,7 +66,7 @@ public class InMemoryBatchConfiguration {
   public JobRegistry jobRegistry() throws Exception {
     return new MapJobRegistry();
   }
-  
+
   @Bean
   public static StepScope stepScope() {
     StepScope stepScope = new StepScope();
