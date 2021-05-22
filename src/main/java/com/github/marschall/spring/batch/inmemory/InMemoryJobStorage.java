@@ -601,6 +601,7 @@ public final class InMemoryJobStorage {
   void addStepExecution(StepExecution stepExecution) {
     Long jobExecutionId = stepExecution.getJobExecutionId();
     Lock writeLock = this.instanceLock.writeLock();
+    writeLock.lock();
     try {
       Map<Long, StepExecution> stepExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
       if (stepExecutions == null) {

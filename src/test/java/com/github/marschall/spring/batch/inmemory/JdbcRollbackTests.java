@@ -11,10 +11,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import com.github.marschall.spring.batch.inmemory.configuration.H2Configuration;
 import com.github.marschall.spring.batch.inmemory.configuration.InsertingJobConfiguration;
 
+@SpringJUnitConfig
 class JdbcRollbackTests {
 
   @Autowired

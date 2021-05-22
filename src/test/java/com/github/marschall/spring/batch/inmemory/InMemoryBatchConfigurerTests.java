@@ -1,9 +1,12 @@
 package com.github.marschall.spring.batch.inmemory;
 
 
-import static org.junit.jupiter.api.Assertions.fail;
+import java.util.List;
+
+import javax.sql.DataSource;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.configuration.annotation.BatchConfigurer;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.SimpleBatchConfiguration;
@@ -27,8 +30,13 @@ class InMemoryBatchConfigurerTests {
   private JobRepositoryTestUtils jobRepositoryTestUtils;
 
   @Test
-  void test() {
-    fail("Not yet implemented");
+  void launchJob() throws Exception {
+    this.jobLauncherTestUtils.launchJob();
+  }
+
+  @Test
+  void createJobExecutions() throws Exception {
+    List<JobExecution> jobExecutions = this.jobRepositoryTestUtils.createJobExecutions(4);
   }
 
   @Configuration
@@ -39,6 +47,11 @@ class InMemoryBatchConfigurerTests {
     @Bean
     BatchConfigurer batchConfigurer() {
       return new InMemoryBatchConfigurer();
+    }
+
+    @Bean
+    public DataSource dataSource() {
+      return new NullDataSource();
     }
 
   }
