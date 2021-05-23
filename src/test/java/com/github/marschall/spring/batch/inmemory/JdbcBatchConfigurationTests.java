@@ -1,42 +1,37 @@
 package com.github.marschall.spring.batch.inmemory;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import javax.sql.DataSource;
 
-import org.junit.jupiter.api.RepeatedTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import com.github.marschall.spring.batch.inmemory.configuration.H2Configuration;
-import com.github.marschall.spring.batch.inmemory.configuration.InsertingJobConfiguration;
+import com.github.marschall.spring.batch.inmemory.configuration.JdbcInsertingJobConfiguration;
 
-@SpringJUnitConfig
-class JdbcRollbackTests {
-
-  @Autowired
-  private JdbcOperations jdbcOperations;
-
-  @RepeatedTest(value = 10)
-  void insert() {
-    assertEquals(0, this.countRows());
-  }
-
-  private int countRows() {
-    return this.jdbcOperations.queryForObject("SELECT COUNT(*) FROM BATCH_TEST", Integer.class);
-  }
+class JdbcBatchConfigurationTests extends AbstractJdbcTests {
 
   @Configuration
-  @Import({InsertingJobConfiguration.class, H2Configuration.class})
+  @Import({
+    H2Configuration.class,
+    JdbcInsertingJobConfiguration.class,
+    InMemoryBatchConfiguration.class
+  })
   static class ContextConfiguration {
 
     @Autowired
     private DataSource dataSource;
+
+    // used to roll back the inserts
+    @Bean
+    public PlatformTransactionManager txManager() {
+      return new DataSourceTransactionManager(this.dataSource);
+    }
 
     @Bean
     public JdbcOperations jdbcOperations() {

@@ -1,28 +1,35 @@
 package com.github.marschall.spring.batch.inmemory;
 
-
 import javax.sql.DataSource;
 
 import org.springframework.batch.core.configuration.annotation.BatchConfigurer;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.SimpleBatchConfiguration;
-import org.springframework.batch.support.transaction.ResourcelessTransactionManager;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcOperations;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import com.github.marschall.spring.batch.inmemory.configuration.LoggingJobConfiguration;
+import com.github.marschall.spring.batch.inmemory.configuration.H2Configuration;
+import com.github.marschall.spring.batch.inmemory.configuration.JdbcInsertingJobConfiguration;
 
-class InMemoryBatchConfigurerTests extends AbstractLoggingTests {
+class JdbcBatchConfigurerTests extends AbstractJdbcTests {
 
   @Configuration
   @EnableBatchProcessing
   @Import({
-    LoggingJobConfiguration.class,
+    H2Configuration.class,
+    JdbcInsertingJobConfiguration.class,
     SimpleBatchConfiguration.class
   })
   static class ContextConfiguration {
+
+    @Autowired
+    private DataSource dataSource;
 
     @Bean
     BatchConfigurer batchConfigurer() {
@@ -30,13 +37,13 @@ class InMemoryBatchConfigurerTests extends AbstractLoggingTests {
     }
 
     @Bean
-    public DataSource dataSource() {
-      return new NullDataSource();
+    public PlatformTransactionManager txManager() {
+      return new DataSourceTransactionManager(this.dataSource);
     }
 
     @Bean
-    public PlatformTransactionManager txManager() {
-      return new ResourcelessTransactionManager();
+    public JdbcOperations jdbcOperations() {
+      return new JdbcTemplate(this.dataSource);
     }
 
   }
