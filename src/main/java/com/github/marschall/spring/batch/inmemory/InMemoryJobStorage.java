@@ -58,11 +58,16 @@ public final class InMemoryJobStorage {
     this.nextStepExecutionId = 1L;
   }
 
+  private List<Long> getExecutionIds(JobInstance jobInstance) {
+    return this.jobInstanceToExecutions.getOrDefault(jobInstance.getInstanceId(), List.of());
+  }
+
   JobInstance createJobInstance(String jobName, JobParameters jobParameters) {
     Objects.requireNonNull(jobName, "jobName");
     Objects.requireNonNull(jobParameters, "jobParameters");
 
     Lock writeLock = this.instanceLock.writeLock();
+    writeLock.lock();
     try {
       return this.createJobInstanceUnlocked(jobName, jobParameters);
     } finally {
@@ -138,28 +143,26 @@ public final class InMemoryJobStorage {
 
       // existing job instance found
       if (jobInstance != null) {
-        List<Long> executionIds = this.jobInstanceToExecutions.get(jobInstance.getInstanceId());
+        List<Long> executionIds = this.getExecutionIds(jobInstance);
         JobExecution lastJobExecution = null;
-        if (executionIds != null) {
-          for (Long executionId : executionIds) {
-            JobExecution jobExecution = this.jobExecutionsById.get(executionId);
-            if (jobExecution.isRunning() || jobExecution.isStopping()) {
-              throw new JobExecutionAlreadyRunningException("A job execution for this job is already running: " + jobInstance);
-            }
-            BatchStatus status = jobExecution.getStatus();
-            if (status == BatchStatus.UNKNOWN) {
-              throw new JobRestartException("Cannot restart job from UNKNOWN status. "
-                  + "The last execution ended with a failure that could not be rolled back, "
-                  + "so it may be dangerous to proceed. Manual intervention is probably necessary.");
-            }
-            if (!jobExecution.getJobParameters().getParameters().isEmpty() && ((status == BatchStatus.COMPLETED) || (status == BatchStatus.ABANDONED))) {
-              throw new JobInstanceAlreadyCompleteException(
-                  "A job instance already exists and is complete for parameters=" + jobParameters
-                  + ".  If you want to run this job again, change the parameters.");
-            }
-            if ((lastJobExecution == null) || lastJobExecution.getCreateTime().before(jobExecution.getCreateTime())) {
-              lastJobExecution = jobExecution;
-            }
+        for (Long executionId : executionIds) {
+          JobExecution jobExecution = this.jobExecutionsById.get(executionId);
+          if (jobExecution.isRunning() || jobExecution.isStopping()) {
+            throw new JobExecutionAlreadyRunningException("A job execution for this job is already running: " + jobInstance);
+          }
+          BatchStatus status = jobExecution.getStatus();
+          if (status == BatchStatus.UNKNOWN) {
+            throw new JobRestartException("Cannot restart job from UNKNOWN status. "
+                    + "The last execution ended with a failure that could not be rolled back, "
+                    + "so it may be dangerous to proceed. Manual intervention is probably necessary.");
+          }
+          if (!jobExecution.getJobParameters().getParameters().isEmpty() && ((status == BatchStatus.COMPLETED) || (status == BatchStatus.ABANDONED))) {
+            throw new JobInstanceAlreadyCompleteException(
+                    "A job instance already exists and is complete for parameters=" + jobParameters
+                    + ".  If you want to run this job again, change the parameters.");
+          }
+          if ((lastJobExecution == null) || lastJobExecution.getCreateTime().before(jobExecution.getCreateTime())) {
+            lastJobExecution = jobExecution;
           }
         }
 
@@ -194,15 +197,13 @@ public final class InMemoryJobStorage {
 
   private JobExecution getLastJobExecutionUnlocked(JobInstance jobInstance) {
     JobExecution lastJobExecution = null;
-    List<Long> executionIds = this.jobInstanceToExecutions.get(jobInstance.getId());
-    if (executionIds != null) {
-      for (Long executionId : executionIds) {
-        JobExecution jobExecution = this.jobExecutionsById.get(executionId);
-        if (lastJobExecution == null) {
-          lastJobExecution = jobExecution;
-        } else if (lastJobExecution.getCreateTime().before(jobExecution.getCreateTime())) {
-          lastJobExecution = jobExecution;
-        }
+    List<Long> executionIds = this.getExecutionIds(jobInstance);
+    for (Long executionId : executionIds) {
+      JobExecution jobExecution = this.jobExecutionsById.get(executionId);
+      if (lastJobExecution == null) {
+        lastJobExecution = jobExecution;
+      } else if (lastJobExecution.getCreateTime().before(jobExecution.getCreateTime())) {
+        lastJobExecution = jobExecution;
       }
     }
     if (lastJobExecution != null) {
@@ -229,7 +230,7 @@ public final class InMemoryJobStorage {
     try {
       List<JobInstanceAndParameters> jobInstancesAndParameters = this.jobInstancesByName.get(jobName);
       for (JobInstanceAndParameters jobInstanceAndParameters : jobInstancesAndParameters) {
-        List<Long> jobExecutionIds = this.jobInstanceToExecutions.get(jobInstanceAndParameters.getJobInstance().getId());
+        List<Long> jobExecutionIds = this.getExecutionIds(jobInstanceAndParameters.getJobInstance());
         for (Long jobExecutionId : jobExecutionIds) {
           JobExecution jobExecution = this.jobExecutionsById.get(jobExecutionId);
           if (jobExecution.isRunning()) {
@@ -247,7 +248,7 @@ public final class InMemoryJobStorage {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
-      List<Long> jobExecutionIds = this.jobInstanceToExecutions.get(jobInstance.getId());
+      List<Long> jobExecutionIds = this.getExecutionIds(jobInstance);
       List<JobExecution> jobExecutions = new ArrayList<>(jobExecutionIds.size());
       for (Long jobExecutionId : jobExecutionIds) {
         JobExecution jobExecution = this.jobExecutionsById.get(jobExecutionId);
@@ -295,6 +296,7 @@ public final class InMemoryJobStorage {
     ExecutionContext jobExecutionContext = jobExecution.getExecutionContext();
     if (jobExecutionContext != null) {
       Lock writeLock = this.instanceLock.writeLock();
+      writeLock.lock();
       try {
         this.updateJobExecutionContextUnlocked(jobExecutionId, jobExecutionContext);
       } finally {
@@ -572,7 +574,7 @@ public final class InMemoryJobStorage {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
-      List<Long> jobExecutionIds = this.jobInstanceToExecutions.get(jobInstance.getInstanceId());
+      List<Long> jobExecutionIds = this.getExecutionIds(jobInstance);
       for (Long jobExecutionId : jobExecutionIds) {
         for (StepExecution stepExecution : this.stepExecutionsByJobExecutionId.get(jobExecutionId).values()) {
           if (stepExecution.getStepName().equals(stepName)) {
@@ -630,6 +632,7 @@ public final class InMemoryJobStorage {
     Long jobExecutionId = stepExecution.getJobExecutionId();
     Long stepExecutionId = stepExecution.getId();
     Lock writeLock = this.instanceLock.writeLock();
+    writeLock.lock();
     try {
       Map<Long, StepExecution> setpExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
       Objects.requireNonNull(setpExecutions, "step executions for given job execution are expected to be already saved");
@@ -658,6 +661,7 @@ public final class InMemoryJobStorage {
     if (stepExecutionContext != null) {
       ExecutionContext stepExecutionContextCopy = copyExecutionContext(stepExecutionContext);
       Lock writeLock = this.instanceLock.writeLock();
+      writeLock.lock();
       try {
         this.stepExecutionContextsById.put(stepExecutionId, stepExecutionContextCopy);
       } finally {
@@ -669,8 +673,9 @@ public final class InMemoryJobStorage {
   int countStepExecutions(JobInstance jobInstance, String stepName) {
     int count = 0;
     Lock readLock = this.instanceLock.readLock();
+    readLock.lock();
     try {
-      List<Long> jobExecutionIds = this.jobInstanceToExecutions.get(jobInstance.getInstanceId());
+      List<Long> jobExecutionIds = this.getExecutionIds(jobInstance);
       for (Long jobExecutionId : jobExecutionIds) {
         for (StepExecution stepExecution : this.stepExecutionsByJobExecutionId.get(jobExecutionId).values()) {
           if (stepExecution.getStepName().equals(stepName)) {
@@ -689,12 +694,24 @@ public final class InMemoryJobStorage {
   }
 
   private static JobExecution copyJobExecution(JobExecution original) {
-    // FIXME maybe we should clear the execution context
-    return new JobExecution(original);
+    JobExecution copy = new JobExecution(original.getJobInstance(), original.getId(), original.getJobParameters(), original.getJobConfigurationName());
+    copy.setVersion(original.getVersion());
+    copy.setStatus(original.getStatus());
+    copy.setStartTime(original.getStartTime());
+    copy.setCreateTime(original.getCreateTime());
+    copy.setEndTime(original.getEndTime());
+    copy.setLastUpdated(original.getLastUpdated());
+    copy.setExitStatus(original.getExitStatus());
+    for (Throwable failureException : original.getAllFailureExceptions()) {
+      copy.addFailureException(failureException);
+    }
+    // do not set the exeuction context
+    return copy;
   }
 
   private static StepExecution copyStepExecution(StepExecution original) {
     StepExecution copy = new StepExecution(original.getStepName(), copyJobExecution(original.getJobExecution()), original.getId());
+    copy.setVersion(original.getVersion());
     copy.setStatus(original.getStatus());
 
     copy.setReadCount(original.getReadCount());
@@ -709,8 +726,7 @@ public final class InMemoryJobStorage {
     copy.setEndTime(original.getEndTime());
     copy.setLastUpdated(original.getLastUpdated());
 
-    // FIXME likely we should not set this here as it gets set later
-    copy.setExecutionContext(copyExecutionContext(original.getExecutionContext()));
+    // do not set the execution context here as it gets set later
     copy.setExitStatus(original.getExitStatus());
     if (original.isTerminateOnly()) {
       copy.setTerminateOnly();

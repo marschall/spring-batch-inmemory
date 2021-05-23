@@ -9,9 +9,11 @@ import java.sql.SQLException;
 final class NullDatabaseMetaData implements DatabaseMetaData {
 
   private final String username;
+  private final Connection connection;
 
-  NullDatabaseMetaData(String username) {
+  NullDatabaseMetaData(String username, Connection connection) {
     this.username = username;
+    this.connection = connection;
   }
 
   @Override
@@ -731,121 +733,88 @@ final class NullDatabaseMetaData implements DatabaseMetaData {
   }
 
   @Override
-  public ResultSet getProcedures(String catalog, String schemaPattern,
-          String procedureNamePattern) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getProcedures(String catalog, String schemaPattern, String procedureNamePattern) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getProcedureColumns(String catalog, String schemaPattern,
-          String procedureNamePattern, String columnNamePattern)
-          throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getProcedureColumns(String catalog, String schemaPattern, String procedureNamePattern, String columnNamePattern) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getTables(String catalog, String schemaPattern,
-          String tableNamePattern, String[] types) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
   public ResultSet getSchemas() throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    return new EmptyResultSet();
   }
 
   @Override
   public ResultSet getCatalogs() throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    return new EmptyResultSet();
   }
 
   @Override
   public ResultSet getTableTypes() throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getColumns(String catalog, String schemaPattern,
-          String tableNamePattern, String columnNamePattern)
-          throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getColumnPrivileges(String catalog, String schema,
-          String table, String columnNamePattern) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getColumnPrivileges(String catalog, String schema, String table, String columnNamePattern) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getTablePrivileges(String catalog, String schemaPattern,
-          String tableNamePattern) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getBestRowIdentifier(String catalog, String schema,
-          String table, int scope, boolean nullable) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getBestRowIdentifier(String catalog, String schema, String table, int scope, boolean nullable) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getVersionColumns(String catalog, String schema,
-          String table) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getVersionColumns(String catalog, String schema, String table) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getPrimaryKeys(String catalog, String schema, String table)
-          throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getImportedKeys(String catalog, String schema, String table)
-          throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getImportedKeys(String catalog, String schema, String table) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getExportedKeys(String catalog, String schema, String table)
-          throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getExportedKeys(String catalog, String schema, String table) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getCrossReference(String parentCatalog, String parentSchema,
-          String parentTable, String foreignCatalog, String foreignSchema,
-          String foreignTable) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getCrossReference(String parentCatalog, String parentSchema, String parentTable, String foreignCatalog, String foreignSchema, String foreignTable) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
   public ResultSet getTypeInfo() throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getIndexInfo(String catalog, String schema, String table,
-          boolean unique, boolean approximate) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getIndexInfo(String catalog, String schema, String table, boolean unique, boolean approximate) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
@@ -922,16 +891,13 @@ final class NullDatabaseMetaData implements DatabaseMetaData {
   }
 
   @Override
-  public ResultSet getUDTs(String catalog, String schemaPattern,
-          String typeNamePattern, int[] types) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public ResultSet getUDTs(String catalog, String schemaPattern, String typeNamePattern, int[] types) throws SQLException {
+    return new EmptyResultSet();
   }
 
   @Override
   public Connection getConnection() throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    return this.connection;
   }
 
   @Override

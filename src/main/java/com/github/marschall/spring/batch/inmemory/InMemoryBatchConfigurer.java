@@ -15,7 +15,7 @@ public class InMemoryBatchConfigurer implements BatchConfigurer {
   private final JobExplorer jobExplorer;
 
   private final JobRepository jobRepository;
-  
+
   private PlatformTransactionManager transactionManager;
 
   public InMemoryBatchConfigurer() {
@@ -38,7 +38,7 @@ public class InMemoryBatchConfigurer implements BatchConfigurer {
   public void setTransactionManager(PlatformTransactionManager transactionManager) {
     this.transactionManager = transactionManager;
   }
-  
+
   @Override
   public PlatformTransactionManager getTransactionManager() throws Exception {
     return this.transactionManager;
@@ -48,6 +48,7 @@ public class InMemoryBatchConfigurer implements BatchConfigurer {
   public JobLauncher getJobLauncher() throws Exception {
     SimpleJobLauncher jobLauncher = new SimpleJobLauncher();
     jobLauncher.setJobRepository(this.jobRepository);
+    jobLauncher.afterPropertiesSet();
     return jobLauncher;
   }
 

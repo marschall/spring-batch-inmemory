@@ -105,7 +105,7 @@ final class NullConnection implements Connection {
 
   @Override
   public DatabaseMetaData getMetaData() throws SQLException {
-    return new NullDatabaseMetaData(this.username);
+    return new NullDatabaseMetaData(this.username, this);
   }
 
   @Override

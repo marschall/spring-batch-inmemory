@@ -8,7 +8,13 @@ import java.util.logging.Logger;
 
 import javax.sql.DataSource;
 
-
+/**
+ * A {@link DataSource} that doesn't perform any database access.
+ * <p>
+ * Intended for use with JobRepositoryTestUtils which requires a {@link DataSource}.
+ * <p>
+ * Instances of this class are thread safe but created objects are not.
+ */
 public final class NullDataSource implements DataSource {
 
   private volatile int loginTimeout = 0;
