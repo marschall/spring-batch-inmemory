@@ -2,6 +2,7 @@ package com.github.marschall.spring.batch.inmemory;
 
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.ConnectionBuilder;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.logging.Logger;
@@ -74,6 +75,11 @@ public final class NullDataSource implements DataSource {
   @Override
   public int getLoginTimeout() throws SQLException {
     return this.loginTimeout;
+  }
+
+  @Override
+  public ConnectionBuilder createConnectionBuilder() throws SQLException {
+    return new NullConnectionBuilder();
   }
 
 }

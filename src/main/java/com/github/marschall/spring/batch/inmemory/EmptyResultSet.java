@@ -14,6 +14,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.RowId;
 import java.sql.SQLException;
+import java.sql.SQLType;
 import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Statement;
@@ -31,6 +32,12 @@ final class EmptyResultSet implements ResultSet {
     this.closed = false;
   }
 
+  private void closedCheck() throws SQLException {
+    if (this.closed) {
+      throw new SQLException("closed result set");
+    }
+  }
+
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
     // TODO Auto-generated method stub
@@ -45,7 +52,7 @@ final class EmptyResultSet implements ResultSet {
 
   @Override
   public boolean next() throws SQLException {
-    // TODO Auto-generated method stub
+    this.closedCheck();
     return false;
   }
 
@@ -1096,92 +1103,79 @@ final class EmptyResultSet implements ResultSet {
   }
 
   @Override
-  public void updateClob(String columnLabel, Reader reader, long length)
-          throws SQLException {
+  public void updateClob(String columnLabel, Reader reader, long length) throws SQLException {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void updateNClob(int columnIndex, Reader reader, long length)
-          throws SQLException {
+  public void updateNClob(int columnIndex, Reader reader, long length) throws SQLException {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void updateNClob(String columnLabel, Reader reader, long length)
-          throws SQLException {
+  public void updateNClob(String columnLabel, Reader reader, long length) throws SQLException {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void updateNCharacterStream(int columnIndex, Reader x)
-          throws SQLException {
+  public void updateNCharacterStream(int columnIndex, Reader x) throws SQLException {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void updateNCharacterStream(String columnLabel, Reader reader)
-          throws SQLException {
+  public void updateNCharacterStream(String columnLabel, Reader reader) throws SQLException {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void updateAsciiStream(int columnIndex, InputStream x)
-          throws SQLException {
+  public void updateAsciiStream(int columnIndex, InputStream x) throws SQLException {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void updateBinaryStream(int columnIndex, InputStream x)
-          throws SQLException {
+  public void updateBinaryStream(int columnIndex, InputStream x) throws SQLException {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void updateCharacterStream(int columnIndex, Reader x)
-          throws SQLException {
+  public void updateCharacterStream(int columnIndex, Reader x) throws SQLException {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void updateAsciiStream(String columnLabel, InputStream x)
-          throws SQLException {
+  public void updateAsciiStream(String columnLabel, InputStream x) throws SQLException {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void updateBinaryStream(String columnLabel, InputStream x)
-          throws SQLException {
+  public void updateBinaryStream(String columnLabel, InputStream x) throws SQLException {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void updateCharacterStream(String columnLabel, Reader reader)
-          throws SQLException {
+  public void updateCharacterStream(String columnLabel, Reader reader) throws SQLException {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void updateBlob(int columnIndex, InputStream inputStream)
-          throws SQLException {
+  public void updateBlob(int columnIndex, InputStream inputStream) throws SQLException {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void updateBlob(String columnLabel, InputStream inputStream)
-          throws SQLException {
+  public void updateBlob(String columnLabel, InputStream inputStream) throws SQLException {
     // TODO Auto-generated method stub
 
   }
@@ -1193,8 +1187,7 @@ final class EmptyResultSet implements ResultSet {
   }
 
   @Override
-  public void updateClob(String columnLabel, Reader reader)
-          throws SQLException {
+  public void updateClob(String columnLabel, Reader reader) throws SQLException {
     // TODO Auto-generated method stub
 
   }
@@ -1206,8 +1199,7 @@ final class EmptyResultSet implements ResultSet {
   }
 
   @Override
-  public void updateNClob(String columnLabel, Reader reader)
-          throws SQLException {
+  public void updateNClob(String columnLabel, Reader reader) throws SQLException {
     // TODO Auto-generated method stub
 
   }
@@ -1219,10 +1211,39 @@ final class EmptyResultSet implements ResultSet {
   }
 
   @Override
-  public <T> T getObject(String columnLabel, Class<T> type)
-          throws SQLException {
+  public <T> T getObject(String columnLabel, Class<T> type) throws SQLException {
     // TODO Auto-generated method stub
     return null;
   }
+
+  @Override
+  public void updateObject(int columnIndex, Object x, SQLType targetSqlType,
+          int scaleOrLength) throws SQLException {
+    // TODO Auto-generated method stub
+    ResultSet.super.updateObject(columnIndex, x, targetSqlType, scaleOrLength);
+  }
+
+  @Override
+  public void updateObject(String columnLabel, Object x, SQLType targetSqlType,
+          int scaleOrLength) throws SQLException {
+    // TODO Auto-generated method stub
+    ResultSet.super.updateObject(columnLabel, x, targetSqlType, scaleOrLength);
+  }
+
+  @Override
+  public void updateObject(int columnIndex, Object x, SQLType targetSqlType)
+          throws SQLException {
+    // TODO Auto-generated method stub
+    ResultSet.super.updateObject(columnIndex, x, targetSqlType);
+  }
+
+  @Override
+  public void updateObject(String columnLabel, Object x, SQLType targetSqlType)
+          throws SQLException {
+    // TODO Auto-generated method stub
+    ResultSet.super.updateObject(columnLabel, x, targetSqlType);
+  }
+
+
 
 }

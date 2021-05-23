@@ -15,6 +15,8 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -23,12 +25,33 @@ final class NullConnection implements Connection {
 
   private final String username;
 
+  private final List<Statement> closeables;
+
+  private boolean closed;
+
   NullConnection() {
     this(null);
   }
 
   NullConnection(String username) {
     this.username = username;
+    this.closed = false;
+    this.closeables = new ArrayList<>();
+  }
+
+  void closedCheck() throws SQLException {
+    if (this.closed) {
+      throw new SQLException("closed result set");
+    }
+  }
+
+  private <S extends Statement> S addCloseable(S closable) {
+    this.closeables.add(closable);
+    return closable;
+  }
+
+  void removeCloseable(Statement closable) {
+    this.closeables.remove(closable);
   }
 
   @Override
@@ -45,20 +68,17 @@ final class NullConnection implements Connection {
 
   @Override
   public Statement createStatement() throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    return this.addCloseable(new NullSatement(this));
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    return this.addCloseable(new NullPreparedStatement(this));
   }
 
   @Override
   public CallableStatement prepareCall(String sql) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    return this.addCloseable(new NullCallableStatement(this));
   }
 
   @Override
@@ -93,14 +113,17 @@ final class NullConnection implements Connection {
 
   @Override
   public void close() throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closed = true;
+    // copy because #close will trigger modification
+    List<Statement> toClose = new ArrayList<>(this.closeables);
+    for (Statement statement : toClose) {
+      statement.close();
+    }
   }
 
   @Override
   public boolean isClosed() throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    return this.closed;
   }
 
   @Override
@@ -356,5 +379,19 @@ final class NullConnection implements Connection {
     // TODO Auto-generated method stub
     return 0;
   }
+
+  @Override
+  public void beginRequest() throws SQLException {
+    // TODO Auto-generated method stub
+    Connection.super.beginRequest();
+  }
+
+  @Override
+  public void endRequest() throws SQLException {
+    // TODO Auto-generated method stub
+    Connection.super.endRequest();
+  }
+
+
 
 }
