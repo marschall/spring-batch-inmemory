@@ -6,10 +6,12 @@ import javax.sql.DataSource;
 import org.springframework.batch.core.configuration.annotation.BatchConfigurer;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.SimpleBatchConfiguration;
+import org.springframework.batch.support.transaction.ResourcelessTransactionManager;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import com.github.marschall.spring.batch.inmemory.configuration.LoggingJobConfiguration;
 
@@ -23,12 +25,17 @@ class InMemoryBatchConfigurerTests extends AbstractLoggingTests {
 
     @Bean
     BatchConfigurer batchConfigurer() {
-      return new InMemoryBatchConfigurer();
+      return new InMemoryBatchConfigurer(this.txManager());
     }
 
     @Bean
     public DataSource dataSource() {
       return new NullDataSource();
+    }
+
+    @Bean
+    public PlatformTransactionManager txManager() {
+      return new ResourcelessTransactionManager();
     }
 
   }

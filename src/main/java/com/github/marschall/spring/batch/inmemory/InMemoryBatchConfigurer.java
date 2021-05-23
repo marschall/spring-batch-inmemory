@@ -5,7 +5,6 @@ import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.support.SimpleJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -16,9 +15,10 @@ public class InMemoryBatchConfigurer implements BatchConfigurer {
 
   private final JobRepository jobRepository;
 
-  private PlatformTransactionManager transactionManager;
+  private final PlatformTransactionManager transactionManager;
 
-  public InMemoryBatchConfigurer() {
+  public InMemoryBatchConfigurer(PlatformTransactionManager transactionManager) {
+    this.transactionManager = transactionManager;
     InMemoryJobStorage storge = new InMemoryJobStorage();
     this.jobExplorer = new InMemoryJobExplorer(storge);
     this.jobRepository = new InMemoryJobRepository(storge);
@@ -32,11 +32,6 @@ public class InMemoryBatchConfigurer implements BatchConfigurer {
   @Override
   public JobRepository getJobRepository() {
     return this.jobRepository;
-  }
-
-  @Autowired
-  public void setTransactionManager(PlatformTransactionManager transactionManager) {
-    this.transactionManager = transactionManager;
   }
 
   @Override
