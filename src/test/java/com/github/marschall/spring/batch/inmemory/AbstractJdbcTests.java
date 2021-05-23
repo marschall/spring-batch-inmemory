@@ -44,7 +44,7 @@ abstract class AbstractJdbcTests {
 
   @Test
   void insertsAreRolledBack() {
-    assertEquals(0, this.countRows());
+    assertEquals(0, this.countRows(), "rows present at start of test");
   }
 
   private int countRows() {
