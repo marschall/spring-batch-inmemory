@@ -18,6 +18,7 @@ import java.sql.Struct;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
@@ -29,6 +30,14 @@ final class NullConnection implements Connection {
 
   private boolean closed;
 
+  private boolean autoCommit;
+
+  private boolean readOnly;
+
+  private String schema;
+
+  private Properties properties;
+
   NullConnection() {
     this(null);
   }
@@ -36,6 +45,9 @@ final class NullConnection implements Connection {
   NullConnection(String username) {
     this.username = username;
     this.closed = false;
+    this.readOnly = false;
+    this.autoCommit = true;
+    this.properties = new Properties();
     this.closeables = new ArrayList<>();
   }
 
@@ -87,32 +99,30 @@ final class NullConnection implements Connection {
 
   @Override
   public String nativeSQL(String sql) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    return sql;
   }
 
   @Override
   public void setAutoCommit(boolean autoCommit) throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closedCheck();
+    this.autoCommit = autoCommit;
   }
 
   @Override
   public boolean getAutoCommit() throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    this.closedCheck();
+    return this.autoCommit;
   }
 
   @Override
   public void commit() throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closedCheck();
   }
 
   @Override
   public void rollback() throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closedCheck();
   }
 
   @Override
@@ -137,20 +147,19 @@ final class NullConnection implements Connection {
 
   @Override
   public void setReadOnly(boolean readOnly) throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closedCheck();
+    this.readOnly = readOnly;
   }
 
   @Override
   public boolean isReadOnly() throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    this.closedCheck();
+    return this.readOnly;
   }
 
   @Override
   public void setCatalog(String catalog) throws SQLException {
     // TODO Auto-generated method stub
-
   }
 
   @Override
@@ -322,25 +331,40 @@ final class NullConnection implements Connection {
 
   @Override
   public void setClientInfo(String name, String value) throws SQLClientInfoException {
-    // TODO Auto-generated method stub
-
+    try {
+      this.closedCheck();
+    } catch (SQLException e) {
+      throw new SQLClientInfoException();
+    }
+    if (value != null) {
+      this.properties.setProperty(name, value);
+    } else {
+      this.properties.remove(name);
+    }
   }
 
   @Override
   public void setClientInfo(Properties properties) throws SQLClientInfoException {
-    // TODO Auto-generated method stub
+    try {
+      this.closedCheck();
+    } catch (SQLException e) {
+      throw new SQLClientInfoException();
+    }
+    Objects.requireNonNull(properties, "properties");
+    this.properties.clear();
+    this.properties.putAll(properties);
   }
 
   @Override
   public String getClientInfo(String name) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    return this.properties.getProperty(name);
   }
 
   @Override
   public Properties getClientInfo() throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    return (Properties) this.properties.clone();
   }
 
   @Override
@@ -357,14 +381,14 @@ final class NullConnection implements Connection {
 
   @Override
   public void setSchema(String schema) throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closedCheck();
+    this.schema = schema;
   }
 
   @Override
   public String getSchema() throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    return this.schema;
   }
 
   @Override
@@ -396,7 +420,5 @@ final class NullConnection implements Connection {
     // TODO Auto-generated method stub
     Connection.super.endRequest();
   }
-
-
 
 }
