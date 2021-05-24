@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType.H2;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -15,16 +16,41 @@ import java.util.List;
 
 import javax.sql.DataSource;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 
 class NullDataSourceTests {
 
-  static List<DataSource> dataSources() {
-    return List.of(h2DataSource(), new NullDataSource());
+  // avoid recreating H2DataSource
+  private static DataSource h2DataSource;
+
+  @BeforeAll
+  static void startH2() {
+    h2DataSource = h2DataSource();
   }
-  
+
+  static List<DataSource> dataSources() {
+    return List.of(h2DataSource, new NullDataSource());
+  }
+
+  @ParameterizedTest
+  @MethodSource("dataSources")
+  void nullMetadata(DataSource dataSource) throws SQLException {
+    try (Connection connection = dataSource.getConnection()) {
+
+      DatabaseMetaData metaData = connection.getMetaData();
+      assertNotNull(metaData);
+      assertTrue(metaData.isWrapperFor(DatabaseMetaData.class));
+      assertSame(metaData, metaData.unwrap(DatabaseMetaData.class));
+
+//      assertNull(metaData.getUserName());
+      // jdbc:h2:mem:66258a27-dbee-4b11-a551-9f035ed12d6c
+      assertNotNull(metaData.getURL());
+    }
+  }
+
   @ParameterizedTest
   @MethodSource("dataSources")
   void nullConnection(DataSource dataSource) throws SQLException {
@@ -45,7 +71,7 @@ class NullDataSourceTests {
       assertNotNull(connection.getClientInfo());
     }
   }
-  
+
   @ParameterizedTest
   @MethodSource("dataSources")
   void nullStatement(DataSource dataSource) throws SQLException {

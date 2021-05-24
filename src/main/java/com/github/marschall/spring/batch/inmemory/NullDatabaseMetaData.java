@@ -18,14 +18,16 @@ final class NullDatabaseMetaData implements DatabaseMetaData {
 
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    if (iface == DatabaseMetaData.class) {
+      return iface.cast(this);
+    } else {
+      throw new SQLException("unsupported interface: " + iface);
+    }
   }
 
   @Override
   public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    return iface == DatabaseMetaData.class;
   }
 
   @Override
@@ -42,8 +44,7 @@ final class NullDatabaseMetaData implements DatabaseMetaData {
 
   @Override
   public String getURL() throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    return "jdbc:null";
   }
 
   @Override
