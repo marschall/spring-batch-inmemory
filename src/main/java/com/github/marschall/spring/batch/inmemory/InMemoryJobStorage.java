@@ -29,6 +29,14 @@ import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.dao.OptimisticLockingFailureException;
 
+/**
+ * Backing store for {@link InMemoryJobRepository} and {@link InMemoryJobExplorer}.
+ * <p>
+ * You should create a single {@link InMemoryJobRepository} and {@link InMemoryJobExplorer}
+ * that share the same {@link InMemoryJobRepository}.
+ * <p>
+ * Instances of this class are thread-safe.
+ */
 public final class InMemoryJobStorage {
 
   private final Map<Long, JobInstance> instancesById;
@@ -44,6 +52,9 @@ public final class InMemoryJobStorage {
   private long nextJobExecutionId;
   private long nextStepExecutionId;
 
+  /**
+   * Default constructor of {@link InMemoryJobRepository}.
+   */
   public InMemoryJobStorage() {
     this.instancesById = new HashMap<>();
     this.jobInstancesByName = new HashMap<>();
@@ -736,7 +747,7 @@ public final class InMemoryJobStorage {
     return copy;
   }
 
-  void clear() {
+  public void clear() {
     Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
     try {

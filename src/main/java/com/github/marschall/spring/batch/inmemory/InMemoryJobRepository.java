@@ -12,6 +12,7 @@ import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
 import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
 import org.springframework.batch.core.repository.JobRepository;
@@ -19,12 +20,20 @@ import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.lang.Nullable;
 
+/**
+ * In-memory implementation of {@link JobExplorer} based on {@link JobRepository}.
+ */
 public final class InMemoryJobRepository implements JobRepository {
 
   private static final Log LOGGER = LogFactory.getLog(MethodHandles.lookup().lookupClass());
 
   private final InMemoryJobStorage storage;
 
+  /**
+   * Constructs a new {@link InMemoryJobRepository}.
+   * 
+   * @param storage the storage to use, not {@code null}
+   */
   public InMemoryJobRepository(InMemoryJobStorage storage) {
     this.storage = storage;
   }

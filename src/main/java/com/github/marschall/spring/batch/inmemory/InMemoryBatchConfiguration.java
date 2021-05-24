@@ -15,14 +15,11 @@ import org.springframework.batch.core.scope.StepScope;
 import org.springframework.batch.support.transaction.ResourcelessTransactionManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.transaction.PlatformTransactionManager;
 
 /**
- * An alternative to {@link AbstractBatchConfiguration} that setup up Spring Batch
+ * An alternative to {@link AbstractBatchConfiguration} that sets up Spring Batch
  * with a in-memory {@link JobRepository} and {@link JobExplorer} without the need
  * for a {@link BatchConfigurer}.
- * <p>
- * Requires that a {@link PlatformTransactionManager} is defined somewhere.
  */
 @Configuration
 public class InMemoryBatchConfiguration {

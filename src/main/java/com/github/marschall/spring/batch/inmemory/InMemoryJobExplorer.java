@@ -11,11 +11,20 @@ import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.NoSuchJobException;
 import org.springframework.lang.Nullable;
 
+/**
+ * In-memory implementation of {@link JobExplorer} based on {@link InMemoryJobStorage}.
+ */
 public final class InMemoryJobExplorer implements JobExplorer {
 
   private final InMemoryJobStorage storage;
 
+  /**
+   * Constructs a new {@link InMemoryJobExplorer}.
+   * 
+   * @param storage the storage to use, not {@code null}
+   */
   public InMemoryJobExplorer(InMemoryJobStorage storage) {
+    Objects.requireNonNull(storage, "storage");
     this.storage = storage;
   }
 
