@@ -37,7 +37,8 @@ public class InMemoryBatchConfiguration {
 
   @Bean
   public StepBuilderFactory stepBuilders() {
-    // the in-memory job repository and job explorer do not support transaction
+    // the in-memory job repository and job explorer do not support transactions
+    // avoid the additional transaction by Spring Batch
     return new StepBuilderFactory(this.jobRepository(), new ResourcelessTransactionManager());
   }
 
@@ -59,7 +60,7 @@ public class InMemoryBatchConfiguration {
   }
 
   @Bean
-  public JobRegistry jobRegistry() throws Exception {
+  public JobRegistry jobRegistry() {
     return new MapJobRegistry();
   }
 
