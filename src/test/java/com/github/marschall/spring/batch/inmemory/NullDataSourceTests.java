@@ -48,6 +48,10 @@ class NullDataSourceTests {
 //      assertNull(metaData.getUserName());
       // jdbc:h2:mem:66258a27-dbee-4b11-a551-9f035ed12d6c
       assertNotNull(metaData.getURL());
+      assertNotNull(metaData.getDriverName());
+      assertNotNull(metaData.getDriverVersion());
+      assertNotNull(metaData.getDatabaseProductName());
+      assertNotNull(metaData.getDatabaseProductVersion());
     }
   }
 
