@@ -933,8 +933,7 @@ final class EmptyResultSet implements ResultSet {
 
   @Override
   public boolean isClosed() throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    return this.closed;
   }
 
   @Override
