@@ -747,6 +747,9 @@ public final class InMemoryJobStorage {
     return copy;
   }
 
+  /**
+   * Clears all data.
+   */
   public void clear() {
     Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
