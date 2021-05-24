@@ -25,6 +25,11 @@ class NullCallableStatement extends NullPreparedStatement implements CallableSta
   NullCallableStatement(NullConnection connection) {
     super(connection);
   }
+  
+  @Override
+  public boolean isWrapperFor(Class<?> iface) throws SQLException {
+    return super.isWrapperFor(iface) || iface == CallableStatement.class;
+  }
 
   @Override
   public void registerOutParameter(int parameterIndex, int sqlType)

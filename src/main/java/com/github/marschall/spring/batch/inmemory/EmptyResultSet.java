@@ -26,9 +26,14 @@ import java.util.Map;
 final class EmptyResultSet implements ResultSet {
 
   private boolean closed;
+  private final NullStatement nullStatement;
 
   EmptyResultSet() {
-    super();
+    this(null);
+  }
+
+  EmptyResultSet(NullStatement nullStatement) {
+    this.nullStatement = nullStatement;
     this.closed = false;
   }
 
@@ -40,14 +45,18 @@ final class EmptyResultSet implements ResultSet {
 
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    if (iface == ResultSet.class) {
+      return iface.cast(this);
+    } else {
+      throw new SQLException("unsupported interface: " + iface);
+    }
   }
 
   @Override
   public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    this.closedCheck();
+    return iface == ResultSet.class;
   }
 
   @Override
@@ -59,6 +68,9 @@ final class EmptyResultSet implements ResultSet {
   @Override
   public void close() throws SQLException {
     this.closed = true;
+    if (this.nullStatement != null) {
+      this.nullStatement.removeCloseable(this);
+    }
   }
 
   @Override
@@ -329,32 +341,31 @@ final class EmptyResultSet implements ResultSet {
 
   @Override
   public boolean isBeforeFirst() throws SQLException {
-    // TODO Auto-generated method stub
+    this.closedCheck();
     return false;
   }
 
   @Override
   public boolean isAfterLast() throws SQLException {
-    // TODO Auto-generated method stub
+    this.closedCheck();
     return false;
   }
 
   @Override
   public boolean isFirst() throws SQLException {
-    // TODO Auto-generated method stub
+    this.closedCheck();
     return false;
   }
 
   @Override
   public boolean isLast() throws SQLException {
-    // TODO Auto-generated method stub
+    this.closedCheck();
     return false;
   }
 
   @Override
   public void beforeFirst() throws SQLException {
     // TODO Auto-generated method stub
-
   }
 
   @Override

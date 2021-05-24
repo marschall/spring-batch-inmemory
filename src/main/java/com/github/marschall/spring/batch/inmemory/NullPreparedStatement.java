@@ -22,7 +22,7 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
 
-class NullPreparedStatement extends NullSatement implements PreparedStatement {
+class NullPreparedStatement extends NullStatement implements PreparedStatement {
 
   NullPreparedStatement(NullConnection connection) {
     super(connection);
@@ -30,8 +30,13 @@ class NullPreparedStatement extends NullSatement implements PreparedStatement {
 
   @Override
   public ResultSet executeQuery() throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    return addCloseable(new EmptyResultSet(this));
+  }
+
+  @Override
+  public boolean isWrapperFor(Class<?> iface) throws SQLException {
+    return super.isWrapperFor(iface) || iface == PreparedStatement.class;
   }
 
   @Override

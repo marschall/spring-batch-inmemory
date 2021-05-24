@@ -8,6 +8,8 @@
   <Loggers>
     <Logger name="org.springframework.test" level="WARN">
     </Logger>
+    <Logger name="org.springframework.jdbc.datasource.embedded" level="WARN">
+    </Logger>
     <Root level="INFO">
       <AppenderRef ref="Console"/>
     </Root>

@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
 
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.test.JobLauncherTestUtils;
 import org.springframework.batch.test.JobRepositoryTestUtils;
@@ -19,8 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 @Rollback
 @SpringBatchTest
+@TestMethodOrder(OrderAnnotation.class)
 abstract class AbstractJdbcTests {
-  // TODO order tests to run #insertsAreRolledBack last
 
   @Autowired
   private JobLauncherTestUtils jobLauncherTestUtils;
@@ -32,17 +35,20 @@ abstract class AbstractJdbcTests {
   private JdbcOperations jdbcOperations;
 
   @Test
+  @Order(1)
   void launchJob() throws Exception {
     this.jobLauncherTestUtils.launchJob();
   }
 
   @Test
+  @Order(2)
   void createJobExecutions() throws Exception {
     List<JobExecution> jobExecutions = this.jobRepositoryTestUtils.createJobExecutions(4);
     assertThat(jobExecutions, hasSize(4));
   }
 
   @Test
+  @Order(3) // run after the jobs
   void insertsAreRolledBack() {
     assertEquals(0, this.countRows(), "rows present at start of test");
   }

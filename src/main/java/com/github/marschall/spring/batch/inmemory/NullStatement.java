@@ -5,16 +5,20 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
-class NullSatement implements Statement {
+class NullStatement implements Statement {
 
   private boolean closed;
   private final NullConnection connection;
+  private final List<ResultSet> closeables;
 
-  NullSatement(NullConnection connection) {
+  NullStatement(NullConnection connection) {
     super();
     this.connection = connection;
     this.closed = false;
+    this.closeables = new ArrayList<>();
   }
 
   void closedCheck() throws SQLException {
@@ -23,16 +27,29 @@ class NullSatement implements Statement {
     }
   }
 
+  ResultSet addCloseable(ResultSet closable) {
+    this.closeables.add(closable);
+    return closable;
+  }
+
+  void removeCloseable(ResultSet closable) {
+    this.closeables.remove(closable);
+  }
+
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    if (this.isWrapperFor(iface)) {
+      return iface.cast(this);
+    } else {
+      throw new SQLException("unsupported interface: " + iface);
+    }
   }
 
   @Override
   public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    this.closedCheck();
+    return iface == Statement.class;
   }
 
   @Override
@@ -50,6 +67,11 @@ class NullSatement implements Statement {
   @Override
   public void close() throws SQLException {
     this.connection.removeCloseable(this);
+    // copy because #close will trigger modification
+    List<ResultSet> toClose = new ArrayList<>(this.closeables);
+    for (ResultSet resultSet : toClose) {
+      resultSet.close();
+    }
     this.closed = true;
   }
 

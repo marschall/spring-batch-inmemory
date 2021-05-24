@@ -56,19 +56,23 @@ final class NullConnection implements Connection {
 
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    if (iface == Connection.class) {
+      return iface.cast(this);
+    } else {
+      throw new SQLException("unsupported interface: " + iface);
+    }
   }
 
   @Override
   public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    this.closedCheck();
+    return iface == Connection.class;
   }
 
   @Override
   public Statement createStatement() throws SQLException {
-    return this.addCloseable(new NullSatement(this));
+    return this.addCloseable(new NullStatement(this));
   }
 
   @Override
@@ -310,8 +314,10 @@ final class NullConnection implements Connection {
 
   @Override
   public boolean isValid(int timeout) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    if (timeout < 0) {
+      throw new SQLException("negative timeout");
+    }
+    return !this.closed;
   }
 
   @Override
@@ -338,8 +344,7 @@ final class NullConnection implements Connection {
   }
 
   @Override
-  public Array createArrayOf(String typeName, Object[] elements)
-          throws SQLException {
+  public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
     // TODO Auto-generated method stub
     return null;
   }
