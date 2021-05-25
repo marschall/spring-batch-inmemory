@@ -1,5 +1,6 @@
 package com.github.marschall.spring.batch.inmemory;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -13,12 +14,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Map;
 
 import javax.sql.DataSource;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.batch.test.JobRepositoryTestUtils;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 
 class NullDataSourceTests {
@@ -73,6 +77,15 @@ class NullDataSourceTests {
 
       assertNotNull(connection.nativeSQL("SELECT 1 FROM dual WHERE 1 = 2"));
       assertNotNull(connection.getClientInfo());
+
+//      assertNull(connection.getCatalog());
+//      assertEquals(Connection.TRANSACTION_READ_COMMITTED, connection.getTransactionIsolation());
+
+      Map<String, Class<?>> typeMap = connection.getTypeMap();
+      if (typeMap != null) {
+        // is null for H"
+        assertTrue(typeMap.isEmpty());
+      }
     }
   }
 
@@ -88,6 +101,9 @@ class NullDataSourceTests {
       assertSame(preparedStatement, preparedStatement.unwrap(PreparedStatement.class));
 
       assertFalse(preparedStatement.isClosed());
+
+      assertEquals(ResultSet.TYPE_FORWARD_ONLY, preparedStatement.getResultSetType());
+      assertEquals(ResultSet.CONCUR_READ_ONLY, preparedStatement.getResultSetConcurrency());
     }
   }
 
@@ -115,6 +131,13 @@ class NullDataSourceTests {
       assertFalse(resultSet.isLast());
       assertFalse(resultSet.isAfterLast());
     }
+  }
+
+  @Test
+  void removeJobExecutions() {
+    JobRepositoryTestUtils testUtils = new JobRepositoryTestUtils();
+    testUtils.setDataSource(new NullDataSource());
+    testUtils.removeJobExecutions();
   }
 
   private static DataSource h2DataSource() {

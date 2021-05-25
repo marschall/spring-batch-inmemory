@@ -24,8 +24,8 @@ import java.util.Calendar;
 
 class NullPreparedStatement extends NullStatement implements PreparedStatement {
 
-  NullPreparedStatement(NullConnection connection) {
-    super(connection);
+  NullPreparedStatement(NullConnection connection, int resultSetType, int resultSetConcurrency) {
+    super(connection, resultSetType, resultSetConcurrency);
   }
 
   @Override

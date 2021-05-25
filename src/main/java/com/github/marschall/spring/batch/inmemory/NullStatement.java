@@ -13,10 +13,14 @@ class NullStatement implements Statement {
   private boolean closed;
   private final NullConnection connection;
   private final List<ResultSet> closeables;
+  private final int resultSetType;
+  private final int resultSetConcurrency;
 
-  NullStatement(NullConnection connection) {
+  NullStatement(NullConnection connection, int resultSetType, int resultSetConcurrency) {
     super();
     this.connection = connection;
+    this.resultSetType = resultSetType;
+    this.resultSetConcurrency = resultSetConcurrency;
     this.closed = false;
     this.closeables = new ArrayList<>();
   }
@@ -191,14 +195,14 @@ class NullStatement implements Statement {
 
   @Override
   public int getResultSetConcurrency() throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    this.closedCheck();
+    return this.resultSetConcurrency;
   }
 
   @Override
   public int getResultSetType() throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    this.closedCheck();
+    return this.resultSetType;
   }
 
   @Override

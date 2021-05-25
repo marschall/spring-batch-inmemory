@@ -22,8 +22,8 @@ import java.util.Map;
 
 class NullCallableStatement extends NullPreparedStatement implements CallableStatement {
 
-  NullCallableStatement(NullConnection connection) {
-    super(connection);
+  NullCallableStatement(NullConnection connection, int resultSetType, int resultSetConcurrency) {
+    super(connection, resultSetType, resultSetConcurrency);
   }
   
   @Override

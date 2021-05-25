@@ -8,6 +8,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.NClob;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
@@ -16,13 +17,19 @@ import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
 final class NullConnection implements Connection {
+
+  private static final Set<Integer> RESULT_SET_TYPES = Set.of(ResultSet.TYPE_FORWARD_ONLY, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.TYPE_SCROLL_SENSITIVE);
+
+  private static final Set<Integer> RESULT_SET_CONCURRENCIES = Set.of(ResultSet.CONCUR_READ_ONLY, ResultSet.CONCUR_UPDATABLE);
 
   private final String username;
 
@@ -38,6 +45,10 @@ final class NullConnection implements Connection {
 
   private Properties properties;
 
+  private Map<String, Class<?>> typeMap;
+
+  private String catalog;
+
   NullConnection() {
     this(null);
   }
@@ -48,6 +59,7 @@ final class NullConnection implements Connection {
     this.readOnly = false;
     this.autoCommit = true;
     this.properties = new Properties();
+    this.typeMap = new HashMap<>();
     this.closeables = new ArrayList<>();
   }
 
@@ -84,17 +96,20 @@ final class NullConnection implements Connection {
 
   @Override
   public Statement createStatement() throws SQLException {
-    return this.addCloseable(new NullStatement(this));
+    this.closedCheck();
+    return this.addCloseable(new NullStatement(this, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY));
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql) throws SQLException {
-    return this.addCloseable(new NullPreparedStatement(this));
+    this.closedCheck();
+    return this.addCloseable(new NullPreparedStatement(this, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY));
   }
 
   @Override
   public CallableStatement prepareCall(String sql) throws SQLException {
-    return this.addCloseable(new NullCallableStatement(this));
+    this.closedCheck();
+    return this.addCloseable(new NullCallableStatement(this, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY));
   }
 
   @Override
@@ -159,13 +174,14 @@ final class NullConnection implements Connection {
 
   @Override
   public void setCatalog(String catalog) throws SQLException {
-    // TODO Auto-generated method stub
+    this.closedCheck();
+    this.catalog = catalog;
   }
 
   @Override
   public String getCatalog() throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    return this.catalog;
   }
 
   @Override
@@ -177,7 +193,8 @@ final class NullConnection implements Connection {
   @Override
   public int getTransactionIsolation() throws SQLException {
     // TODO Auto-generated method stub
-    return 0;
+    this.closedCheck();
+    return Connection.TRANSACTION_NONE;
   }
 
   @Override
@@ -194,8 +211,14 @@ final class NullConnection implements Connection {
 
   @Override
   public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    if (!RESULT_SET_TYPES.contains(resultSetType)) {
+      throw new SQLException("unsupported result set type: " + resultSetType);
+    }
+    if (!RESULT_SET_CONCURRENCIES.contains(resultSetConcurrency)) {
+      throw new SQLException("unsupported result set concurrency: " + resultSetConcurrency);
+    }
+    return this.addCloseable(new NullStatement(this, resultSetType, resultSetConcurrency));
   }
 
   @Override
@@ -212,14 +235,17 @@ final class NullConnection implements Connection {
 
   @Override
   public Map<String, Class<?>> getTypeMap() throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    return new HashMap<>(this.typeMap);
   }
 
   @Override
   public void setTypeMap(Map<String, Class<?>> map) throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closedCheck();
+    this.typeMap.clear();
+    if (map != null) {
+      this.typeMap.putAll(map);
+    }
   }
 
   @Override
@@ -266,9 +292,7 @@ final class NullConnection implements Connection {
   }
 
   @Override
-  public PreparedStatement prepareStatement(String sql, int resultSetType,
-          int resultSetConcurrency, int resultSetHoldability)
-          throws SQLException {
+  public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
     // TODO Auto-generated method stub
     return null;
   }
