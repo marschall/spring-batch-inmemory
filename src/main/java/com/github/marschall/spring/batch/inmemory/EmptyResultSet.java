@@ -27,13 +27,19 @@ final class EmptyResultSet implements ResultSet {
 
   private boolean closed;
   private final NullStatement nullStatement;
+  private final int type;
+  private final int concurrency;
+  private final int holdability;
 
   EmptyResultSet() {
-    this(null);
+    this(null, TYPE_FORWARD_ONLY, CONCUR_READ_ONLY, HOLD_CURSORS_OVER_COMMIT);
   }
 
-  EmptyResultSet(NullStatement nullStatement) {
+  EmptyResultSet(NullStatement nullStatement, int type, int concurrency, int holdability) {
     this.nullStatement = nullStatement;
+    this.type = type;
+    this.concurrency = concurrency;
+    this.holdability = holdability;
     this.closed = false;
   }
 
@@ -436,14 +442,14 @@ final class EmptyResultSet implements ResultSet {
 
   @Override
   public int getType() throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    this.closedCheck();
+    return this.type;
   }
 
   @Override
   public int getConcurrency() throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    this.closedCheck();
+    return this.concurrency;
   }
 
   @Override
@@ -938,8 +944,8 @@ final class EmptyResultSet implements ResultSet {
 
   @Override
   public int getHoldability() throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    this.closedCheck();
+    return this.holdability;
   }
 
   @Override

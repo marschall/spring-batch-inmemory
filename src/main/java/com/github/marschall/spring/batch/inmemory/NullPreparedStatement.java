@@ -24,14 +24,14 @@ import java.util.Calendar;
 
 class NullPreparedStatement extends NullStatement implements PreparedStatement {
 
-  NullPreparedStatement(NullConnection connection, int resultSetType, int resultSetConcurrency) {
-    super(connection, resultSetType, resultSetConcurrency);
+  NullPreparedStatement(NullConnection connection, int resultSetType, int resultSetConcurrency, int resultSetHoldability) {
+    super(connection, resultSetType, resultSetConcurrency, resultSetHoldability);
   }
 
   @Override
   public ResultSet executeQuery() throws SQLException {
     this.closedCheck();
-    return addCloseable(new EmptyResultSet(this));
+    return addCloseable(new EmptyResultSet(this, this.resultSetType, this.resultSetConcurrency, this.resultSetHoldability));
   }
 
   @Override

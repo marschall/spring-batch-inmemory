@@ -30,6 +30,8 @@ final class NullConnection implements Connection {
   private static final Set<Integer> RESULT_SET_TYPES = Set.of(ResultSet.TYPE_FORWARD_ONLY, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.TYPE_SCROLL_SENSITIVE);
 
   private static final Set<Integer> RESULT_SET_CONCURRENCIES = Set.of(ResultSet.CONCUR_READ_ONLY, ResultSet.CONCUR_UPDATABLE);
+  
+  private static final Set<Integer> HOLDABILITIES = Set.of(ResultSet.HOLD_CURSORS_OVER_COMMIT, ResultSet.CLOSE_CURSORS_AT_COMMIT);
 
   private final String username;
 
@@ -49,6 +51,8 @@ final class NullConnection implements Connection {
 
   private String catalog;
 
+  private int holdability;
+
   NullConnection() {
     this(null);
   }
@@ -58,6 +62,7 @@ final class NullConnection implements Connection {
     this.closed = false;
     this.readOnly = false;
     this.autoCommit = true;
+    this.holdability = ResultSet.HOLD_CURSORS_OVER_COMMIT;
     this.properties = new Properties();
     this.typeMap = new HashMap<>();
     this.closeables = new ArrayList<>();
@@ -97,19 +102,19 @@ final class NullConnection implements Connection {
   @Override
   public Statement createStatement() throws SQLException {
     this.closedCheck();
-    return this.addCloseable(new NullStatement(this, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY));
+    return this.addCloseable(new NullStatement(this, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, this.holdability));
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql) throws SQLException {
     this.closedCheck();
-    return this.addCloseable(new NullPreparedStatement(this, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY));
+    return this.addCloseable(new NullPreparedStatement(this, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, this.holdability));
   }
 
   @Override
   public CallableStatement prepareCall(String sql) throws SQLException {
     this.closedCheck();
-    return this.addCloseable(new NullCallableStatement(this, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY));
+    return this.addCloseable(new NullCallableStatement(this, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, this.holdability));
   }
 
   @Override
@@ -218,7 +223,7 @@ final class NullConnection implements Connection {
     if (!RESULT_SET_CONCURRENCIES.contains(resultSetConcurrency)) {
       throw new SQLException("unsupported result set concurrency: " + resultSetConcurrency);
     }
-    return this.addCloseable(new NullStatement(this, resultSetType, resultSetConcurrency));
+    return this.addCloseable(new NullStatement(this, resultSetType, resultSetConcurrency, this.holdability));
   }
 
   @Override
@@ -250,14 +255,17 @@ final class NullConnection implements Connection {
 
   @Override
   public void setHoldability(int holdability) throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closedCheck();
+    if (!HOLDABILITIES.contains(holdability)) {
+      throw new SQLException("unsupported holdability: " + holdability);
+    }
+    this.holdability = holdability;
   }
 
   @Override
   public int getHoldability() throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    this.closedCheck();
+    return this.holdability;
   }
 
   @Override

@@ -74,6 +74,7 @@ class NullDataSourceTests {
 
       assertTrue(connection.getAutoCommit());
       assertFalse(connection.isReadOnly());
+      assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, connection.getHoldability());
 
       assertNotNull(connection.nativeSQL("SELECT 1 FROM dual WHERE 1 = 2"));
       assertNotNull(connection.getClientInfo());
@@ -104,6 +105,7 @@ class NullDataSourceTests {
 
       assertEquals(ResultSet.TYPE_FORWARD_ONLY, preparedStatement.getResultSetType());
       assertEquals(ResultSet.CONCUR_READ_ONLY, preparedStatement.getResultSetConcurrency());
+      assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, preparedStatement.getResultSetHoldability());
     }
   }
 
@@ -118,6 +120,10 @@ class NullDataSourceTests {
       assertSame(resultSet, resultSet.unwrap(ResultSet.class));
 
       assertFalse(resultSet.isClosed());
+
+      assertEquals(ResultSet.TYPE_FORWARD_ONLY, resultSet.getType());
+      assertEquals(ResultSet.CONCUR_READ_ONLY, resultSet.getConcurrency());
+      assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, resultSet.getHoldability());
 
       assertFalse(resultSet.isBeforeFirst());
       assertFalse(resultSet.isFirst());
