@@ -106,6 +106,7 @@ class NullDataSourceTests {
       assertEquals(ResultSet.TYPE_FORWARD_ONLY, preparedStatement.getResultSetType());
       assertEquals(ResultSet.CONCUR_READ_ONLY, preparedStatement.getResultSetConcurrency());
       assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, preparedStatement.getResultSetHoldability());
+      assertEquals(0, preparedStatement.getQueryTimeout());
     }
   }
 

@@ -74,6 +74,24 @@ final class NullConnection implements Connection {
     }
   }
 
+  private void validateResultSetHoldability(int resultSetHoldability) throws SQLException {
+    if (!HOLDABILITIES.contains(holdability)) {
+      throw new SQLException("unsupported holdability: " + resultSetHoldability);
+    }
+  }
+
+  private void validateResultSetConcurrency(int resultSetConcurrency) throws SQLException {
+    if (!RESULT_SET_CONCURRENCIES.contains(resultSetConcurrency)) {
+      throw new SQLException("unsupported result set concurrency: " + resultSetConcurrency);
+    }
+  }
+
+  private void validateResultSetType(int resultSetType) throws SQLException {
+    if (!RESULT_SET_TYPES.contains(resultSetType)) {
+      throw new SQLException("unsupported result set type: " + resultSetType);
+    }
+  }
+
   private <S extends Statement> S addCloseable(S closable) {
     this.closeables.add(closable);
     return closable;
@@ -217,25 +235,25 @@ final class NullConnection implements Connection {
   @Override
   public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
     this.closedCheck();
-    if (!RESULT_SET_TYPES.contains(resultSetType)) {
-      throw new SQLException("unsupported result set type: " + resultSetType);
-    }
-    if (!RESULT_SET_CONCURRENCIES.contains(resultSetConcurrency)) {
-      throw new SQLException("unsupported result set concurrency: " + resultSetConcurrency);
-    }
+    validateResultSetType(resultSetType);
+    validateResultSetConcurrency(resultSetConcurrency);
     return this.addCloseable(new NullStatement(this, resultSetType, resultSetConcurrency, this.holdability));
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    validateResultSetType(resultSetType);
+    validateResultSetConcurrency(resultSetConcurrency);
+    return this.addCloseable(new NullPreparedStatement(this, resultSetType, resultSetConcurrency, this.holdability));
   }
 
   @Override
   public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    validateResultSetType(resultSetType);
+    validateResultSetConcurrency(resultSetConcurrency);
+    return this.addCloseable(new NullCallableStatement(this, resultSetType, resultSetConcurrency, this.holdability));
   }
 
   @Override
@@ -256,9 +274,7 @@ final class NullConnection implements Connection {
   @Override
   public void setHoldability(int holdability) throws SQLException {
     this.closedCheck();
-    if (!HOLDABILITIES.contains(holdability)) {
-      throw new SQLException("unsupported holdability: " + holdability);
-    }
+    validateResultSetHoldability(holdability);
     this.holdability = holdability;
   }
 
@@ -293,22 +309,30 @@ final class NullConnection implements Connection {
   }
 
   @Override
-  public Statement createStatement(int resultSetType, int resultSetConcurrency,
-          int resultSetHoldability) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+  public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
+    this.closedCheck();
+    validateResultSetType(resultSetType);
+    validateResultSetConcurrency(resultSetConcurrency);
+    validateResultSetHoldability(resultSetHoldability);
+    return this.addCloseable(new NullStatement(this, resultSetType, resultSetConcurrency, resultSetHoldability));
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    validateResultSetType(resultSetType);
+    validateResultSetConcurrency(resultSetConcurrency);
+    validateResultSetHoldability(resultSetHoldability);
+    return this.addCloseable(new NullPreparedStatement(this, resultSetType, resultSetConcurrency, resultSetHoldability));
   }
 
   @Override
   public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    this.closedCheck();
+    validateResultSetType(resultSetType);
+    validateResultSetConcurrency(resultSetConcurrency);
+    validateResultSetHoldability(resultSetHoldability);
+    return this.addCloseable(new NullCallableStatement(this, resultSetType, resultSetConcurrency, resultSetHoldability));
   }
 
   @Override
@@ -356,7 +380,7 @@ final class NullConnection implements Connection {
   @Override
   public boolean isValid(int timeout) throws SQLException {
     if (timeout < 0) {
-      throw new SQLException("negative timeout");
+      throw new SQLException("negative timeout: " + timeout);
     }
     return !this.closed;
   }
