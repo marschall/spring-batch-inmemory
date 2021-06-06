@@ -30,16 +30,20 @@ final class EmptyResultSet implements ResultSet {
   private final int type;
   private final int concurrency;
   private final int holdability;
+  private int fetchSize;
+  private int fetchDirection;
 
   EmptyResultSet() {
-    this(null, TYPE_FORWARD_ONLY, CONCUR_READ_ONLY, HOLD_CURSORS_OVER_COMMIT);
+    this(null, TYPE_FORWARD_ONLY, CONCUR_READ_ONLY, HOLD_CURSORS_OVER_COMMIT, NullStatement.DEFAULT_FETCH_SIZE, ResultSet.FETCH_FORWARD);
   }
 
-  EmptyResultSet(NullStatement nullStatement, int type, int concurrency, int holdability) {
+  EmptyResultSet(NullStatement nullStatement, int type, int concurrency, int holdability, int fetchSize, int fetchDirection) {
     this.nullStatement = nullStatement;
     this.type = type;
     this.concurrency = concurrency;
     this.holdability = holdability;
+    this.fetchSize = fetchSize;
+    this.fetchDirection = fetchDirection;
     this.closed = false;
   }
 
@@ -418,26 +422,34 @@ final class EmptyResultSet implements ResultSet {
 
   @Override
   public void setFetchDirection(int direction) throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closedCheck();
+    NullStatement.validateFetchDirection(direction);
+    this.fetchDirection = direction;
   }
 
   @Override
   public int getFetchDirection() throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    this.closedCheck();
+    return this.fetchDirection;
   }
 
   @Override
   public void setFetchSize(int rows) throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closedCheck();
+    if (rows > 0) {
+      this.fetchSize = rows;
+    } else if (rows == 0) {
+      this.fetchSize = NullStatement.DEFAULT_FETCH_SIZE;
+    } else {
+      throw new SQLException("negative fetch size: " + rows);
+    }
+    this.fetchSize = rows;
   }
 
   @Override
   public int getFetchSize() throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    this.closedCheck();
+    return this.fetchSize;
   }
 
   @Override

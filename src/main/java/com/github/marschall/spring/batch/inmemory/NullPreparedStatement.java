@@ -31,7 +31,9 @@ class NullPreparedStatement extends NullStatement implements PreparedStatement {
   @Override
   public ResultSet executeQuery() throws SQLException {
     this.closedCheck();
-    return addCloseable(new EmptyResultSet(this, this.resultSetType, this.resultSetConcurrency, this.resultSetHoldability));
+    return addCloseable(new EmptyResultSet(this,
+        this.resultSetType, this.resultSetConcurrency, this.resultSetHoldability,
+        this.fetchSize, this.fetchDirection));
   }
 
   @Override

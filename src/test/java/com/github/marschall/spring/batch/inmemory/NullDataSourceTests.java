@@ -106,7 +106,9 @@ class NullDataSourceTests {
       assertEquals(ResultSet.TYPE_FORWARD_ONLY, preparedStatement.getResultSetType());
       assertEquals(ResultSet.CONCUR_READ_ONLY, preparedStatement.getResultSetConcurrency());
       assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, preparedStatement.getResultSetHoldability());
+      assertEquals(ResultSet.FETCH_FORWARD, preparedStatement.getFetchDirection());
       assertEquals(0, preparedStatement.getQueryTimeout());
+      assertEquals(100, preparedStatement.getFetchSize());
     }
   }
 
@@ -125,6 +127,8 @@ class NullDataSourceTests {
       assertEquals(ResultSet.TYPE_FORWARD_ONLY, resultSet.getType());
       assertEquals(ResultSet.CONCUR_READ_ONLY, resultSet.getConcurrency());
       assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, resultSet.getHoldability());
+      assertTrue(resultSet.getFetchSize() == preparedStatement.getFetchSize() || resultSet.getFetchSize() == 0);
+      assertEquals(ResultSet.FETCH_FORWARD, resultSet.getFetchDirection());
 
       assertFalse(resultSet.isBeforeFirst());
       assertFalse(resultSet.isFirst());
