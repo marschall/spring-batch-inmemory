@@ -222,14 +222,13 @@ final class NullConnection implements Connection {
 
   @Override
   public SQLWarning getWarnings() throws SQLException {
-    // TODO Auto-generated method stub
+    this.closedCheck();
     return null;
   }
 
   @Override
   public void clearWarnings() throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closedCheck();
   }
 
   @Override

@@ -3,6 +3,7 @@ package com.github.marschall.spring.batch.inmemory;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType.H2;
@@ -78,6 +79,8 @@ class NullDataSourceTests {
 
       assertNotNull(connection.nativeSQL("SELECT 1 FROM dual WHERE 1 = 2"));
       assertNotNull(connection.getClientInfo());
+
+      assertNull(connection.getWarnings());
 
 //      assertNull(connection.getCatalog());
 //      assertEquals(Connection.TRANSACTION_READ_COMMITTED, connection.getTransactionIsolation());
