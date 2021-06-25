@@ -193,7 +193,7 @@ class NullStatement implements Statement {
   @Override
   public void setFetchDirection(int direction) throws SQLException {
     this.closedCheck();
-    this.validateFetchDirection(direction);
+    validateFetchDirection(direction);
     this.fetchDirection = direction;
   }
 
