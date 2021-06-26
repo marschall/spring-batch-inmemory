@@ -60,7 +60,7 @@
       <dependency>
         <groupId>org.springframework</groupId>
         <artifactId>spring-framework-bom</artifactId>
-        <version>5.3.6</version>
+        <version>5.3.8</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -337,6 +337,6 @@
   <properties>
     <project.reporting.outputEncoding>utf-8</project.reporting.outputEncoding>
     <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
-    <spring.batch.version>4.3.2</spring.batch.version>
+    <spring.batch.version>4.3.3</spring.batch.version>
   </properties>
 </project>
