@@ -7,8 +7,13 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 class NullStatement implements Statement {
+
+  private static final Set<Integer> FETCH_DIRECTIONS = Set.of(ResultSet.FETCH_FORWARD, ResultSet.FETCH_REVERSE, ResultSet.FETCH_UNKNOWN);
+
+  static final int DEFAULT_FETCH_SIZE = 100;
 
   private boolean closed;
   private final NullConnection connection;
@@ -16,14 +21,26 @@ class NullStatement implements Statement {
   final int resultSetType;
   final int resultSetConcurrency;
   final int resultSetHoldability;
+  private int queryTimeout;
+  int fetchSize;
+  int fetchDirection;
 
   NullStatement(NullConnection connection, int resultSetType, int resultSetConcurrency, int resultSetHoldability) {
     this.connection = connection;
     this.resultSetType = resultSetType;
     this.resultSetConcurrency = resultSetConcurrency;
     this.resultSetHoldability = resultSetHoldability;
+    this.queryTimeout = 0;
+    this.fetchSize = DEFAULT_FETCH_SIZE;
+    this.fetchDirection = ResultSet.FETCH_FORWARD;
     this.closed = false;
     this.closeables = new ArrayList<>();
+  }
+
+  static void validateFetchDirection(int direction) throws SQLException {
+    if (!FETCH_DIRECTIONS.contains(direction)) {
+      throw new SQLException("unsupported direction: " + direction);
+    }
   }
 
   void closedCheck() throws SQLException {
@@ -112,14 +129,17 @@ class NullStatement implements Statement {
 
   @Override
   public int getQueryTimeout() throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    this.closedCheck();
+    return this.queryTimeout;
   }
 
   @Override
   public void setQueryTimeout(int seconds) throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closedCheck();
+    if (seconds < 0) {
+      throw new SQLException("query timeout must not be negative, was: " + seconds);
+    }
+    this.queryTimeout = seconds;
   }
 
   @Override
@@ -172,26 +192,34 @@ class NullStatement implements Statement {
 
   @Override
   public void setFetchDirection(int direction) throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closedCheck();
+    validateFetchDirection(direction);
+    this.fetchDirection = direction;
   }
 
   @Override
   public int getFetchDirection() throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    this.closedCheck();
+    return this.fetchDirection;
   }
 
   @Override
   public void setFetchSize(int rows) throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.closedCheck();
+    if (rows > 0) {
+      this.fetchSize = rows;
+    } else if (rows == 0) {
+      this.fetchSize = DEFAULT_FETCH_SIZE;
+    } else {
+      throw new SQLException("negative fetch size: " + rows);
+    }
+    this.fetchSize = rows;
   }
 
   @Override
   public int getFetchSize() throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    this.closedCheck();
+    return this.fetchSize;
   }
 
   @Override
@@ -393,7 +421,5 @@ class NullStatement implements Statement {
     // TODO Auto-generated method stub
     return Statement.super.enquoteNCharLiteral(val);
   }
-
-
 
 }
