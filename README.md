@@ -1,15 +1,22 @@
 Spring Batch In Memory
 ======================
 
-In memory implementations of the Spring Batch `JobRepository` and `JobExplorer` interfaces as the map based implementations are deprecated.
+In memory implementations of the Spring Batch `JobRepository` and `JobExplorer` interfaces as the map based DAO implementations (`MapJobInstanceDao`, `MapJobExecutionDao`, `MapStepExecutionDao` and `MapExecutionContextDao`) are deprecated.
 
 This project allows to run Spring Batch integration tests either without JDBC or with rolling back all DML operations.
+
+```xml
+<dependency>
+  <groupId>com.github.marschall</groupId>
+  <artifactId>spring-batch-inmemory</artifactId>
+  <version>0.1.0</version>
+</dependency>
+```
 
 There are two ways this project can be used, either through `SimpleBatchConfiguration` and `BatchConfigurer` or through `InMemoryBatchConfiguration`.
 
 SimpleBatchConfiguration and BatchConfigurer
 --------------------------------------------
-
 
 ```java
 @Transactional // only needed of you have JDBC DML operations that you want to rollback
@@ -83,5 +90,7 @@ class MySpringBatchIntegrationTests {
 Implementation Notes
 --------------------
 
-As this is intended for testing purposes the implementation is based on `HashMap`s rather than `ConcurrentHashMap` in order to save memory. Thread safety is instead provided through a `ReadWriteLock`. There is no transaction isolation so the behavior is similar to `read uncommitted`.
+- As this is intended for testing purposes the implementation is based on `HashMap`s rather than `ConcurrentHashMap` in order to save memory. Thread safety is instead provided through a `ReadWriteLock`.
+- There is no transaction isolation so the behavior is similar to `read uncommitted`.
+- Copying of contexts (`ExecutionContext`, `JobExecution` and `StepExecution`) is implemented through copy constructors instead of serialization and deserialization which should result in small efficiency gains.
 
