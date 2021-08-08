@@ -27,7 +27,7 @@ import java.util.concurrent.Executor;
 
 final class NullConnection implements Connection {
 
-  private static final Set<Integer> RESULT_SET_TYPES = Set.of(ResultSet.TYPE_FORWARD_ONLY, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.TYPE_SCROLL_SENSITIVE);
+  static final Set<Integer> RESULT_SET_TYPES = Set.of(ResultSet.TYPE_FORWARD_ONLY, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.TYPE_SCROLL_SENSITIVE);
 
   private static final Set<Integer> RESULT_SET_CONCURRENCIES = Set.of(ResultSet.CONCUR_READ_ONLY, ResultSet.CONCUR_UPDATABLE);
   
