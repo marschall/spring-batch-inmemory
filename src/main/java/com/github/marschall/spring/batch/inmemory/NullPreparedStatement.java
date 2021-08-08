@@ -27,6 +27,11 @@ class NullPreparedStatement extends NullStatement implements PreparedStatement {
   NullPreparedStatement(NullConnection connection, int resultSetType, int resultSetConcurrency, int resultSetHoldability) {
     super(connection, resultSetType, resultSetConcurrency, resultSetHoldability);
   }
+  
+  @Override
+  public ResultSet executeQuery(String sql) throws SQLException {
+    throw new SQLException("not allowed for prepared statement, only for statements");
+  }
 
   @Override
   public ResultSet executeQuery() throws SQLException {
@@ -42,8 +47,13 @@ class NullPreparedStatement extends NullStatement implements PreparedStatement {
   }
 
   @Override
+  public int executeUpdate(String sql) throws SQLException {
+    throw new SQLException("not allowed for prepared statement, only for statements");
+  }
+
+  @Override
   public int executeUpdate() throws SQLException {
-    // TODO Auto-generated method stub
+    this.closedCheck();
     return 0;
   }
 
@@ -404,13 +414,16 @@ class NullPreparedStatement extends NullStatement implements PreparedStatement {
     // TODO Auto-generated method stub
     PreparedStatement.super.setObject(parameterIndex, x, targetSqlType);
   }
+  
+  @Override
+  public long executeLargeUpdate(String sql) throws SQLException {
+    throw new SQLException("not allowed for prepared statement, only for statements");
+  }
 
   @Override
   public long executeLargeUpdate() throws SQLException {
-    // TODO Auto-generated method stub
-    return PreparedStatement.super.executeLargeUpdate();
+    this.closedCheck();
+    return 0L;
   }
-
-
 
 }
