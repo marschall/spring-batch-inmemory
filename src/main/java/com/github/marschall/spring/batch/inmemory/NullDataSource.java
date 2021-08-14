@@ -12,7 +12,8 @@ import javax.sql.DataSource;
 /**
  * A {@link DataSource} that doesn't perform any database access.
  * <p>
- * Intended for use with JobRepositoryTestUtils which requires a {@link DataSource}.
+ * Intended for use with JobRepositoryTestUtils which requires a {@link DataSource},
+ * this is a work around for <a href="https://github.com/spring-projects/spring-batch/issues/3767">#3767</a>.
  * <p>
  * Instances of this class are thread safe but created objects are not.
  */
