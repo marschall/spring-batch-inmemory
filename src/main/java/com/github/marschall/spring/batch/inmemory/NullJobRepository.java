@@ -92,7 +92,6 @@ public final class NullJobRepository implements JobRepository {
   @Override
   public void add(StepExecution stepExecution) {
     validateStepExecution(stepExecution);
-    Objects.requireNonNull(stepExecution.getId(), "StepExecution must already be saved (have an id assigned)");
 
     stepExecution.setId(STEP_EXECUTION_ID.incrementAndGet());
     stepExecution.setLastUpdated(new Date());
