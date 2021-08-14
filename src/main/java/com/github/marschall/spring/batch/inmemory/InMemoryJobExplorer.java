@@ -20,7 +20,7 @@ public final class InMemoryJobExplorer implements JobExplorer {
 
   /**
    * Constructs a new {@link InMemoryJobExplorer}.
-   * 
+   *
    * @param storage the storage to use, not {@code null}
    */
   public InMemoryJobExplorer(InMemoryJobStorage storage) {
@@ -58,7 +58,7 @@ public final class InMemoryJobExplorer implements JobExplorer {
     return this.storage.findJobInstancesByJobName(jobName, start, count);
   }
 
-  @Nullable 
+  @Nullable
   @Override
   public JobInstance getJobInstance(@Nullable Long jobInstanceId) {
     if (jobInstanceId == null) {
@@ -67,7 +67,7 @@ public final class InMemoryJobExplorer implements JobExplorer {
     return this.storage.getJobInstance(jobInstanceId);
   }
 
-  @Nullable 
+  @Nullable
   @Override
   public JobExecution getJobExecution(@Nullable Long executionId) {
     if (executionId == null) {
@@ -80,7 +80,13 @@ public final class InMemoryJobExplorer implements JobExplorer {
   @Override
   public JobExecution getLastJobExecution(JobInstance jobInstance) {
     Objects.requireNonNull(jobInstance, "jobInstance");
-    return this.storage.getLastJobExecution(jobInstance);
+    JobExecution jobExecution = this.storage.getLastJobExecution(jobInstance);
+    // https://github.com/spring-projects/spring-batch/issues/3943
+    this.setJobExecutionDependencies(jobExecution);
+    for (StepExecution stepExecution : jobExecution.getStepExecutions()) {
+      this.setStepExecutionDependencies(stepExecution);
+    }
+    return jobExecution;
   }
 
   @Nullable
@@ -93,20 +99,20 @@ public final class InMemoryJobExplorer implements JobExplorer {
   @Nullable
   @Override
   public StepExecution getStepExecution(@Nullable Long jobExecutionId, @Nullable Long stepExecutionId) {
-    if (jobExecutionId == null || stepExecutionId == null) {
+    if ((jobExecutionId == null) || (stepExecutionId == null)) {
       return null;
     }
-    
+
     JobExecution jobExecution = this.storage.getJobExecution(jobExecutionId);
     if (jobExecution == null) {
       return null;
     }
-    setJobExecutionDependencies(jobExecution);
+    this.setJobExecutionDependencies(jobExecution);
     StepExecution stepExecution = this.storage.getStepExecution(jobExecutionId, stepExecutionId);
     if (stepExecution == null) {
       return null;
     }
-    setStepExecutionDependencies(stepExecution);
+    this.setStepExecutionDependencies(stepExecution);
     return stepExecution;
   }
 
@@ -114,9 +120,9 @@ public final class InMemoryJobExplorer implements JobExplorer {
   public List<JobExecution> getJobExecutions(JobInstance jobInstance) {
     List<JobExecution> executions = this.storage.findJobExecutions(jobInstance);
     for (JobExecution jobExecution : executions) {
-      setJobExecutionDependencies(jobExecution);
+      this.setJobExecutionDependencies(jobExecution);
       for (StepExecution stepExecution : jobExecution.getStepExecutions()) {
-        setStepExecutionDependencies(stepExecution);
+        this.setStepExecutionDependencies(stepExecution);
       }
     }
     return executions;

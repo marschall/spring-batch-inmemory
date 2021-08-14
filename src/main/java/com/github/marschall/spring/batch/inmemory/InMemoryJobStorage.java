@@ -186,7 +186,7 @@ public final class InMemoryJobStorage {
 
       JobExecution jobExecution = new JobExecution(jobInstance, jobParameters, null);
       jobExecution.setExecutionContext(executionContext);
-      jobExecution.setLastUpdated(new Date(System.currentTimeMillis()));
+      jobExecution.setLastUpdated(new Date());
 
       // Save the JobExecution so that it picks up an ID (useful for clients
       // monitoring asynchronous executions):
