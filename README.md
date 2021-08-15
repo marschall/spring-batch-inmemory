@@ -1,4 +1,4 @@
-Spring Batch In Memory
+Spring Batch In-Memory
 ======================
 
 In memory implementations of the Spring Batch `JobRepository` and `JobExplorer` interfaces as the map based DAO implementations (`MapJobInstanceDao`, `MapJobExecutionDao`, `MapStepExecutionDao` and `MapExecutionContextDao`) are deprecated.
@@ -27,7 +27,7 @@ class MySpringBatchIntegrationTests {
   @Configuration
   @EnableBatchProcessing
   @Import({
-    MyJobConfiguration.class, // the configuration class of the Spring Batch job you want to test
+    MyJobConfiguration.class, // the configuration class of the Spring Batch job or step you want to test
     SimpleBatchConfiguration.class
   })
   static class ContextConfiguration {
@@ -68,7 +68,7 @@ class MySpringBatchIntegrationTests {
 
   @Configuration
   @Import({
-    MyJobConfiguration.class, // the configuration class of the Spring Batch job you want to test
+    MyJobConfiguration.class, // the configuration class of the Spring Batch job or step you want to test
     InMemoryBatchConfiguration.class
   })
   static class ContextConfiguration {
