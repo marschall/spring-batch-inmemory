@@ -1,10 +1,12 @@
 package com.github.marschall.spring.batch.inmemory;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType.H2;
 
@@ -50,7 +52,7 @@ class NullDataSourceTests {
       assertTrue(metaData.isWrapperFor(DatabaseMetaData.class));
       assertSame(metaData, metaData.unwrap(DatabaseMetaData.class));
 
-//      assertNull(metaData.getUserName());
+      // assertNull(metaData.getUserName());
       // jdbc:h2:mem:66258a27-dbee-4b11-a551-9f035ed12d6c
       assertNotNull(metaData.getURL());
       assertNotNull(metaData.getDriverName());
@@ -82,8 +84,8 @@ class NullDataSourceTests {
 
       assertNull(connection.getWarnings());
 
-//      assertNull(connection.getCatalog());
-//      assertEquals(Connection.TRANSACTION_READ_COMMITTED, connection.getTransactionIsolation());
+      //  assertNull(connection.getCatalog());
+      //  assertEquals(Connection.TRANSACTION_READ_COMMITTED, connection.getTransactionIsolation());
 
       Map<String, Class<?>> typeMap = connection.getTypeMap();
       if (typeMap != null) {
@@ -96,6 +98,27 @@ class NullDataSourceTests {
   @ParameterizedTest
   @MethodSource("dataSources")
   void nullStatement(DataSource dataSource) throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+         Statement statement = connection.createStatement()) {
+
+      assertTrue(statement.isWrapperFor(Statement.class));
+      assertFalse(statement.isWrapperFor(PreparedStatement.class));
+      assertSame(statement, statement.unwrap(Statement.class));
+
+      assertFalse(statement.isClosed());
+
+      try (ResultSet resultSet = statement.executeQuery("SELECT 1 FROM dual WHERE 1 = 2")) {
+        assertNotNull(resultSet);
+        assertTrue(resultSet.isWrapperFor(ResultSet.class));
+        assertSame(resultSet, resultSet.unwrap(ResultSet.class));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("dataSources")
+  void nullPreparedStatement(DataSource dataSource) throws SQLException {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement preparedStatement = connection.prepareStatement("SELECT 1 FROM dual WHERE 1 = 2")) {
 
@@ -112,6 +135,48 @@ class NullDataSourceTests {
       assertEquals(ResultSet.FETCH_FORWARD, preparedStatement.getFetchDirection());
       assertEquals(0, preparedStatement.getQueryTimeout());
       assertEquals(100, preparedStatement.getFetchSize());
+
+      assertThrows(SQLException.class, () -> preparedStatement.executeQuery("SELECT 1 FROM dual WHERE 1 = 2"));
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("dataSources")
+  void nullPreparedStatementUpdate(DataSource dataSource) throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+         PreparedStatement preparedStatement = connection.prepareStatement("UPDATE batch_test SET id = ? WHERE id < 0")) {
+
+      preparedStatement.setLong(1, 1L);
+      assertEquals(0, preparedStatement.executeUpdate());
+      preparedStatement.setLong(1, 2L);
+      assertEquals(0L, preparedStatement.executeLargeUpdate());
+
+      assertThrows(SQLException.class, () -> preparedStatement.executeUpdate("UPDATE batch_test SET id = id + 1 WHERE id < 0"));
+      assertThrows(SQLException.class, () -> preparedStatement.executeLargeUpdate("UPDATE batch_test SET id = id + 1 WHERE id < 0"));
+
+      preparedStatement.setLong(1, 3L);
+      preparedStatement.clearBatch();
+
+      preparedStatement.setLong(1, 4L);
+      preparedStatement.addBatch();
+
+      assertArrayEquals(new int[] {0}, preparedStatement.executeBatch());
+
+      preparedStatement.setLong(1, 5L);
+      preparedStatement.addBatch();
+
+      assertArrayEquals(new long[] {0L}, preparedStatement.executeLargeBatch());
+    }
+  }
+  
+  @ParameterizedTest
+  @MethodSource("dataSources")
+  void nullStatementUpdate(DataSource dataSource) throws SQLException {
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement()) {
+
+      assertEquals(0, statement.executeUpdate("UPDATE batch_test SET id = id + 1 WHERE id < 0"));
+      assertEquals(0L, statement.executeLargeUpdate("UPDATE batch_test SET id = id + 1 WHERE id < 0"));
     }
   }
 
@@ -119,8 +184,8 @@ class NullDataSourceTests {
   @MethodSource("dataSources")
   void emptyResultSet(DataSource dataSource) throws SQLException {
     try (Connection connection = dataSource.getConnection();
-         PreparedStatement preparedStatement = connection.prepareStatement("SELECT 1 FROM dual WHERE 1 = 2");
-         ResultSet resultSet = preparedStatement.executeQuery()) {
+        PreparedStatement preparedStatement = connection.prepareStatement("SELECT 1 FROM dual WHERE 1 = 2");
+        ResultSet resultSet = preparedStatement.executeQuery()) {
 
       assertTrue(resultSet.isWrapperFor(ResultSet.class));
       assertSame(resultSet, resultSet.unwrap(ResultSet.class));
@@ -157,6 +222,7 @@ class NullDataSourceTests {
   private static DataSource h2DataSource() {
     return new EmbeddedDatabaseBuilder()
         .generateUniqueName(true)
+        .addScript("classpath:sql/h2-schema.sql")
         .setType(H2)
         .build();
   }

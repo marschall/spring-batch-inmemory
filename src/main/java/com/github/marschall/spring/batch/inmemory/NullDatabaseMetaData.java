@@ -113,14 +113,12 @@ final class NullDatabaseMetaData implements DatabaseMetaData {
   }
 
   @Override
-  public boolean usesLocalFiles() throws SQLException {
-    // TODO Auto-generated method stub
+  public boolean usesLocalFiles() {
     return false;
   }
 
   @Override
-  public boolean usesLocalFilePerTable() throws SQLException {
-    // TODO Auto-generated method stub
+  public boolean usesLocalFilePerTable() {
     return false;
   }
 
@@ -659,32 +657,27 @@ final class NullDatabaseMetaData implements DatabaseMetaData {
   }
 
   @Override
-  public int getMaxStatementLength() throws SQLException {
-    // TODO Auto-generated method stub
+  public int getMaxStatementLength() {
     return 0;
   }
 
   @Override
-  public int getMaxStatements() throws SQLException {
-    // TODO Auto-generated method stub
+  public int getMaxStatements() {
     return 0;
   }
 
   @Override
-  public int getMaxTableNameLength() throws SQLException {
-    // TODO Auto-generated method stub
+  public int getMaxTableNameLength() {
     return 0;
   }
 
   @Override
-  public int getMaxTablesInSelect() throws SQLException {
-    // TODO Auto-generated method stub
+  public int getMaxTablesInSelect() {
     return 0;
   }
 
   @Override
-  public int getMaxUserNameLength() throws SQLException {
-    // TODO Auto-generated method stub
+  public int getMaxUserNameLength() {
     return 0;
   }
 
@@ -734,94 +727,93 @@ final class NullDatabaseMetaData implements DatabaseMetaData {
   }
 
   @Override
-  public ResultSet getProcedures(String catalog, String schemaPattern, String procedureNamePattern) throws SQLException {
+  public ResultSet getProcedures(String catalog, String schemaPattern, String procedureNamePattern) {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getProcedureColumns(String catalog, String schemaPattern, String procedureNamePattern, String columnNamePattern) throws SQLException {
+  public ResultSet getProcedureColumns(String catalog, String schemaPattern, String procedureNamePattern, String columnNamePattern) {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types) throws SQLException {
+  public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types) {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getSchemas() throws SQLException {
+  public ResultSet getSchemas() {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getCatalogs() throws SQLException {
+  public ResultSet getCatalogs() {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getTableTypes() throws SQLException {
+  public ResultSet getTableTypes() {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) throws SQLException {
+  public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getColumnPrivileges(String catalog, String schema, String table, String columnNamePattern) throws SQLException {
+  public ResultSet getColumnPrivileges(String catalog, String schema, String table, String columnNamePattern) {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
+  public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern) {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getBestRowIdentifier(String catalog, String schema, String table, int scope, boolean nullable) throws SQLException {
+  public ResultSet getBestRowIdentifier(String catalog, String schema, String table, int scope, boolean nullable) {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getVersionColumns(String catalog, String schema, String table) throws SQLException {
+  public ResultSet getVersionColumns(String catalog, String schema, String table) {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
+  public ResultSet getPrimaryKeys(String catalog, String schema, String table) {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getImportedKeys(String catalog, String schema, String table) throws SQLException {
+  public ResultSet getImportedKeys(String catalog, String schema, String table) {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getExportedKeys(String catalog, String schema, String table) throws SQLException {
+  public ResultSet getExportedKeys(String catalog, String schema, String table) {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getCrossReference(String parentCatalog, String parentSchema, String parentTable, String foreignCatalog, String foreignSchema, String foreignTable) throws SQLException {
+  public ResultSet getCrossReference(String parentCatalog, String parentSchema, String parentTable, String foreignCatalog, String foreignSchema, String foreignTable) {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getTypeInfo() throws SQLException {
+  public ResultSet getTypeInfo() {
     return new EmptyResultSet();
   }
 
   @Override
-  public ResultSet getIndexInfo(String catalog, String schema, String table, boolean unique, boolean approximate) throws SQLException {
+  public ResultSet getIndexInfo(String catalog, String schema, String table, boolean unique, boolean approximate) {
     return new EmptyResultSet();
   }
 
   @Override
-  public boolean supportsResultSetType(int type) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+  public boolean supportsResultSetType(int type) {
+    return NullConnection.RESULT_SET_TYPES.contains(type);
   }
 
   @Override
@@ -892,7 +884,7 @@ final class NullDatabaseMetaData implements DatabaseMetaData {
   }
 
   @Override
-  public ResultSet getUDTs(String catalog, String schemaPattern, String typeNamePattern, int[] types) throws SQLException {
+  public ResultSet getUDTs(String catalog, String schemaPattern, String typeNamePattern, int[] types) {
     return new EmptyResultSet();
   }
 
