@@ -167,13 +167,6 @@
             <link>https://docs.spring.io/spring-framework/docs/current/javadoc-api/</link>
             <link>https://docs.spring.io/spring-batch/docs/current/api/</link>
           </links>
-          <tags>
-            <tag>
-              <name>implNote</name>
-              <placement>a</placement>
-              <head>Implementation Note:</head>
-            </tag>
-          </tags>
         </configuration>
         <executions>
           <execution>
