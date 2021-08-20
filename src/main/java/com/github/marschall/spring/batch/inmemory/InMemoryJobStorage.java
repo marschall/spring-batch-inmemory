@@ -3,6 +3,7 @@ package com.github.marschall.spring.batch.inmemory;
 import static java.util.stream.Collectors.toList;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
@@ -20,6 +21,7 @@ import java.util.regex.Pattern;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobInstance;
+import org.springframework.batch.core.JobParameter;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.launch.NoSuchJobException;
@@ -90,7 +92,7 @@ public final class InMemoryJobStorage {
     List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
     if (instancesAndParameters != null) {
       for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
-        if (instanceAndParametes.getJobParameters().equals(jobParameters)) {
+        if (instanceAndParametes.getJobParameters().equals(jobParameters)) { // TODO identifying?
           throw new IllegalStateException("JobInstance must not already exist");
         }
       }
@@ -123,12 +125,16 @@ public final class InMemoryJobStorage {
 
       this.jobExecutionsById.put(jobExecutionId, copyJobExecution(jobExecution));
       this.jobExecutionContextsById.put(jobExecutionId, copyExecutionContext(executionContext));
-      this.jobInstanceToExecutions.computeIfAbsent(jobInstance.getInstanceId(), id -> new ArrayList<>()).add(jobExecutionId);
+      this.mapJobExecutionUnlocked(jobInstance, jobExecution);
       return jobExecution;
     } finally {
       writeLock.unlock();
     }
 
+  }
+
+  private boolean mapJobExecutionUnlocked(JobInstance jobInstance, JobExecution jobExecution) {
+    return this.jobInstanceToExecutions.computeIfAbsent(jobInstance.getInstanceId(), id -> new ArrayList<>()).add(jobExecution.getId());
   }
 
   ExecutionContext getExecutionContext(JobExecution jobExecution) {
@@ -155,6 +161,11 @@ public final class InMemoryJobStorage {
       // existing job instance found
       if (jobInstance != null) {
         List<Long> executionIds = this.getExecutionIds(jobInstance);
+
+        if (executionIds.isEmpty()) {
+          throw new IllegalStateException("Cannot find any job execution for job instance: " + jobInstance);
+        }
+
         JobExecution lastJobExecution = null;
         for (Long executionId : executionIds) {
           JobExecution jobExecution = this.jobExecutionsById.get(executionId);
@@ -167,7 +178,7 @@ public final class InMemoryJobStorage {
                     + "The last execution ended with a failure that could not be rolled back, "
                     + "so it may be dangerous to proceed. Manual intervention is probably necessary.");
           }
-          if (!jobExecution.getJobParameters().getParameters().isEmpty() && ((status == BatchStatus.COMPLETED) || (status == BatchStatus.ABANDONED))) {
+          if (hasIdentifyingParameter(jobExecution) && ((status == BatchStatus.COMPLETED) || (status == BatchStatus.ABANDONED))) {
             throw new JobInstanceAlreadyCompleteException(
                     "A job instance already exists and is complete for parameters=" + jobParameters
                     + ".  If you want to run this job again, change the parameters.");
@@ -192,11 +203,18 @@ public final class InMemoryJobStorage {
       // monitoring asynchronous executions):
       this.saveJobExecutionUnlocked(jobExecution);
       this.updateJobExecutionContextUnlocked(jobExecution.getId(), executionContext);
+      this.mapJobExecutionUnlocked(jobInstance, jobExecution);
 
       return jobExecution;
     } finally {
       writeLock.unlock();
     }
+  }
+
+  private static boolean hasIdentifyingParameter(JobExecution jobExecution) {
+    Collection<JobParameter> jobParameters = jobExecution.getJobParameters().getParameters().values();
+    return jobParameters.stream()
+                        .anyMatch(JobParameter::isIdentifying);
   }
 
   private void saveJobExecutionUnlocked(JobExecution jobExecution) {
@@ -363,7 +381,7 @@ public final class InMemoryJobStorage {
     List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
     if(instancesAndParameters != null) {
       for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
-        if (instanceAndParametes.getJobParameters().equals(jobParameters)) {
+        if (instanceAndParametes.getJobParameters().equals(jobParameters)) { // TODO identifiying?
           return instanceAndParametes.getJobInstance();
         }
       }
@@ -534,7 +552,7 @@ public final class InMemoryJobStorage {
     try {
       Map<Long, StepExecution> executions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
       if ((executions == null) || executions.isEmpty()) {
-        List.of();
+        return List.of();
       }
       List<StepExecution> stepExecutions = new ArrayList<>(executions.values());
       stepExecutions.sort(Comparator.comparing(StepExecution::getId));
@@ -545,6 +563,15 @@ public final class InMemoryJobStorage {
       return stepExecutions;
     } finally {
       readLock.unlock();
+    }
+  }
+
+  private Collection<StepExecution> getStepExecutionsOfJobExecutionUnlocked(Long jobExecutionId) {
+    Map<Long, StepExecution> stepExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
+    if (stepExecutions != null) {
+      return stepExecutions.values();
+    } else {
+      return List.of();
     }
   }
 
@@ -587,15 +614,15 @@ public final class InMemoryJobStorage {
     try {
       List<Long> jobExecutionIds = this.getExecutionIds(jobInstance);
       for (Long jobExecutionId : jobExecutionIds) {
-        for (StepExecution stepExecution : this.stepExecutionsByJobExecutionId.get(jobExecutionId).values()) {
+        for (StepExecution stepExecution : this.getStepExecutionsOfJobExecutionUnlocked(jobExecutionId)) {
           if (stepExecution.getStepName().equals(stepName)) {
             if (latest == null) {
               latest = stepExecution;
             } else if (latest.getStartTime().before(stepExecution.getStartTime())) {
               latest = stepExecution;
             } else if (latest.getStartTime().equals(stepExecution.getStartTime())
-                // Use step execution ID as the tie breaker if start time is identical
-                && (latest.getId() < stepExecution.getId())) {
+                    // Use step execution ID as the tie breaker if start time is identical
+                    && (latest.getId() < stepExecution.getId())) {
               latest = stepExecution;
             }
           }
@@ -688,7 +715,7 @@ public final class InMemoryJobStorage {
     try {
       List<Long> jobExecutionIds = this.getExecutionIds(jobInstance);
       for (Long jobExecutionId : jobExecutionIds) {
-        for (StepExecution stepExecution : this.stepExecutionsByJobExecutionId.get(jobExecutionId).values()) {
+        for (StepExecution stepExecution : this.getStepExecutionsOfJobExecutionUnlocked(jobExecutionId)) {
           if (stepExecution.getStepName().equals(stepName)) {
             count++;
           }
@@ -748,7 +775,8 @@ public final class InMemoryJobStorage {
   }
 
   /**
-   * Clears all data.
+   * Clears all data, affects all {@link InMemoryJobRepository} and {@link InMemoryJobExplorer}
+   * backed by this object.
    */
   public void clear() {
     Lock writeLock = this.instanceLock.writeLock();

@@ -31,6 +31,11 @@ public class InMemoryBatchConfiguration {
   }
 
   @Bean
+  public InMemoryJobStorage inMemoryJobStorage() {
+    return this.storge;
+  }
+
+  @Bean
   public JobBuilderFactory jobBuilders() {
     return new JobBuilderFactory(this.jobRepository());
   }

@@ -1,0 +1,4 @@
+# Custom TestExecutionListeners for the Spring TestContext Framework
+#
+org.springframework.test.context.TestExecutionListener = \
+	com.github.marschall.spring.batch.inmemory.ClearTestExecutionListener

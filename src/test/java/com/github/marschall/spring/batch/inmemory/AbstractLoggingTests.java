@@ -2,10 +2,12 @@ package com.github.marschall.spring.batch.inmemory;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.junit.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.test.JobLauncherTestUtils;
 import org.springframework.batch.test.JobRepositoryTestUtils;
@@ -23,7 +25,8 @@ abstract class AbstractLoggingTests {
 
   @Test
   void launchJob() throws Exception {
-    this.jobLauncherTestUtils.launchJob();
+    JobExecution jobExecution = this.jobLauncherTestUtils.launchJob();
+    assertEquals(ExitStatus.COMPLETED, jobExecution.getExitStatus());
   }
 
   @Test

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.test.JobLauncherTestUtils;
 import org.springframework.batch.test.JobRepositoryTestUtils;
@@ -37,7 +38,8 @@ abstract class AbstractJdbcTests {
   @Test
   @Order(1)
   void launchJob() throws Exception {
-    this.jobLauncherTestUtils.launchJob();
+    JobExecution jobExecution = this.jobLauncherTestUtils.launchJob();
+    assertEquals(ExitStatus.COMPLETED, jobExecution.getExitStatus());
   }
 
   @Test
