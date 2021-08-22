@@ -9,7 +9,7 @@ This project allows to run Spring Batch integration tests either without JDBC or
 <dependency>
   <groupId>com.github.marschall</groupId>
   <artifactId>spring-batch-inmemory</artifactId>
-  <version>0.2.0</version>
+  <version>0.2.1</version>
 </dependency>
 ```
 
