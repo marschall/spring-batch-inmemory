@@ -17,6 +17,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
@@ -92,7 +93,7 @@ public final class InMemoryJobStorage {
     List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
     if (instancesAndParameters != null) {
       for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
-        if (instanceAndParametes.getJobParameters().equals(jobParameters)) { // TODO identifying?
+        if (instanceAndParametes.areIdentifyingJoParametersEqualTo(jobParameters)) {
           throw new IllegalStateException("JobInstance must not already exist");
         }
       }
@@ -106,7 +107,10 @@ public final class InMemoryJobStorage {
       instancesAndParameters = new ArrayList<>();
       this.jobInstancesByName.put(jobName, instancesAndParameters);
     }
-    instancesAndParameters.add(new JobInstanceAndParameters(jobInstance, jobParameters));
+    Map<String, JobParameter> identifyingJoParameters = jobParameters.getParameters().entrySet().stream()
+                                 .filter(entry -> entry.getValue().isIdentifying())
+                                 .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+    instancesAndParameters.add(new JobInstanceAndParameters(jobInstance, identifyingJoParameters));
 
     return jobInstance;
   }
@@ -381,7 +385,7 @@ public final class InMemoryJobStorage {
     List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
     if(instancesAndParameters != null) {
       for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
-        if (instanceAndParametes.getJobParameters().equals(jobParameters)) { // TODO identifiying?
+        if (instanceAndParametes.areIdentifyingJoParametersEqualTo(jobParameters)) {
           return instanceAndParametes.getJobInstance();
         }
       }
@@ -801,19 +805,37 @@ public final class InMemoryJobStorage {
 
     private final JobInstance jobInstance;
 
-    private final JobParameters jobParameters;
+    private final Map<String, JobParameter> identifyingJoParameters;
 
-    JobInstanceAndParameters(JobInstance jobInstance, JobParameters jobParameters) {
+    JobInstanceAndParameters(JobInstance jobInstance, Map<String, JobParameter> identifyingJoParameters) {
       this.jobInstance = jobInstance;
-      this.jobParameters = jobParameters;
+      this.identifyingJoParameters =identifyingJoParameters;
     }
 
     JobInstance getJobInstance() {
       return this.jobInstance;
     }
 
-    JobParameters getJobParameters() {
-      return this.jobParameters;
+    Map<String, JobParameter> getIdentifyingJoParameters() {
+      return this.identifyingJoParameters;
+    }
+
+    boolean areIdentifyingJoParametersEqualTo(JobParameters otherJobParameters) {
+      Map<String, JobParameter> otherJobParametersMap = otherJobParameters.getParameters();
+      for (Entry<String, JobParameter> identifyingJoParameter : this.identifyingJoParameters.entrySet()) {
+        if (!identifyingJoParameter.getValue().equals(otherJobParametersMap.get(identifyingJoParameter.getKey()))) {
+          return false;
+        }
+      }
+      for (Entry<String, JobParameter> identifyingJoParameter : otherJobParametersMap.entrySet()) {
+        JobParameter identifyingJoParameterValue = identifyingJoParameter.getValue();
+        if (identifyingJoParameterValue.isIdentifying()) {
+          if (!identifyingJoParameterValue.equals(this.identifyingJoParameters.get(identifyingJoParameter.getKey()))) {
+            return false;
+          }
+        }
+      }
+      return true;
     }
 
   }
