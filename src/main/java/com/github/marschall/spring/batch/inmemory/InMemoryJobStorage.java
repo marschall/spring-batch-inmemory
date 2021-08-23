@@ -73,7 +73,7 @@ public final class InMemoryJobStorage {
   }
 
   private List<Long> getExecutionIds(JobInstance jobInstance) {
-    return this.jobInstanceToExecutions.getOrDefault(jobInstance.getInstanceId(), List.of());
+    return this.jobInstanceToExecutions.getOrDefault(jobInstance.getId(), List.of());
   }
 
   JobInstance createJobInstance(String jobName, JobParameters jobParameters) {
@@ -138,7 +138,7 @@ public final class InMemoryJobStorage {
   }
 
   private boolean mapJobExecutionUnlocked(JobInstance jobInstance, JobExecution jobExecution) {
-    return this.jobInstanceToExecutions.computeIfAbsent(jobInstance.getInstanceId(), id -> new ArrayList<>()).add(jobExecution.getId());
+    return this.jobInstanceToExecutions.computeIfAbsent(jobInstance.getId(), id -> new ArrayList<>()).add(jobExecution.getId());
   }
 
   ExecutionContext getExecutionContext(JobExecution jobExecution) {
@@ -216,9 +216,17 @@ public final class InMemoryJobStorage {
   }
 
   private static boolean hasIdentifyingParameter(JobExecution jobExecution) {
-    Collection<JobParameter> jobParameters = jobExecution.getJobParameters().getParameters().values();
-    return jobParameters.stream()
-                        .anyMatch(JobParameter::isIdentifying);
+    JobParameters jobParameters = jobExecution.getJobParameters();
+    if (jobParameters.isEmpty()) {
+      return false;
+    }
+    Map<String, JobParameter> parameterMap = jobParameters.getParameters();
+    for (JobParameter jobParameter : parameterMap.values()) {
+      if (jobParameter.isIdentifying()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void saveJobExecutionUnlocked(JobExecution jobExecution) {
