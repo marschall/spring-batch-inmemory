@@ -31,6 +31,7 @@ import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteExcep
 import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.lang.Nullable;
 
 /**
  * Backing store for {@link InMemoryJobRepository} and {@link InMemoryJobExplorer}.
@@ -41,6 +42,8 @@ import org.springframework.dao.OptimisticLockingFailureException;
  * Instances of this class are thread-safe.
  */
 public final class InMemoryJobStorage {
+
+  // TODO JobExecution#setCreateTime
 
   private final Map<Long, JobInstance> instancesById;
   private final Map<String, List<JobInstanceAndParameters>> jobInstancesByName;
@@ -237,17 +240,11 @@ public final class InMemoryJobStorage {
   }
 
   private JobExecution getLastJobExecutionUnlocked(JobInstance jobInstance) {
-    JobExecution lastJobExecution = null;
+    // last should have greatest id
     List<Long> executionIds = this.getExecutionIds(jobInstance);
-    for (Long executionId : executionIds) {
-      JobExecution jobExecution = this.jobExecutionsById.get(executionId);
-      if (lastJobExecution == null) {
-        lastJobExecution = jobExecution;
-      } else if (lastJobExecution.getCreateTime().before(jobExecution.getCreateTime())) {
-        lastJobExecution = jobExecution;
-      }
-    }
-    if (lastJobExecution != null) {
+    if (!executionIds.isEmpty()) {
+      Long lastExecutionId = executionIds.get(executionIds.size() - 1);
+      JobExecution lastJobExecution = this.jobExecutionsById.get(lastExecutionId);
       return copyJobExecution(lastJobExecution);
     } else {
       return null;
@@ -424,13 +421,7 @@ public final class InMemoryJobStorage {
         return jobInstances.get(0).getJobInstance();
       } else {
         // the last one should have the highest id
-        JobInstance jobInstanceWithHighestId = jobInstances.get(0).getJobInstance();
-        for (int i = 1; i < jobInstances.size(); i++) {
-          JobInstance jobInstance = jobInstances.get(i).getJobInstance();
-          if (jobInstance.getInstanceId() > jobInstanceWithHighestId.getInstanceId()) {
-            jobInstanceWithHighestId = jobInstance;
-          }
-        }
+        JobInstance jobInstanceWithHighestId = jobInstances.get(jobInstances.size() - 1).getJobInstance();
         return jobInstanceWithHighestId;
       }
     } finally {
@@ -578,12 +569,14 @@ public final class InMemoryJobStorage {
     }
   }
 
+  @Nullable
   private Collection<StepExecution> getStepExecutionsOfJobExecutionUnlocked(Long jobExecutionId) {
     Map<Long, StepExecution> stepExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
     if (stepExecutions != null) {
       return stepExecutions.values();
     } else {
-      return List.of();
+      // the iterator shows up during profiling
+      return null;
     }
   }
 
@@ -626,16 +619,21 @@ public final class InMemoryJobStorage {
     try {
       List<Long> jobExecutionIds = this.getExecutionIds(jobInstance);
       for (Long jobExecutionId : jobExecutionIds) {
-        for (StepExecution stepExecution : this.getStepExecutionsOfJobExecutionUnlocked(jobExecutionId)) {
-          if (stepExecution.getStepName().equals(stepName)) {
-            if (latest == null) {
-              latest = stepExecution;
-            } else if (latest.getStartTime().before(stepExecution.getStartTime())) {
-              latest = stepExecution;
-            } else if (latest.getStartTime().equals(stepExecution.getStartTime())
-                    // Use step execution ID as the tie breaker if start time is identical
-                    && (latest.getId() < stepExecution.getId())) {
-              latest = stepExecution;
+        // TODO access by step name would be great
+        // TODO reverse ordered access would be great
+        Collection<StepExecution> stepExecutions = this.getStepExecutionsOfJobExecutionUnlocked(jobExecutionId);
+        if (stepExecutions != null) {
+          for (StepExecution stepExecution : stepExecutions) {
+            if (stepExecution.getStepName().equals(stepName)) {
+              if (latest == null) {
+                latest = stepExecution;
+              } else if (latest.getStartTime().before(stepExecution.getStartTime())) {
+                latest = stepExecution;
+              } else if (latest.getStartTime().equals(stepExecution.getStartTime())
+                      // Use step execution ID as the tie breaker if start time is identical
+                      && (latest.getId().compareTo(stepExecution.getId()) < 0)) {
+                latest = stepExecution;
+              }
             }
           }
         }
@@ -727,9 +725,12 @@ public final class InMemoryJobStorage {
     try {
       List<Long> jobExecutionIds = this.getExecutionIds(jobInstance);
       for (Long jobExecutionId : jobExecutionIds) {
-        for (StepExecution stepExecution : this.getStepExecutionsOfJobExecutionUnlocked(jobExecutionId)) {
-          if (stepExecution.getStepName().equals(stepName)) {
-            count++;
+        Collection<StepExecution> stepExecutions = this.getStepExecutionsOfJobExecutionUnlocked(jobExecutionId);
+        if (stepExecutions != null) {
+          for (StepExecution stepExecution : stepExecutions) {
+            if (stepExecution.getStepName().equals(stepName)) {
+              count++;
+            }
           }
         }
       }
@@ -756,6 +757,7 @@ public final class InMemoryJobStorage {
       copy.addFailureException(failureException);
     }
     // do not set the exeuction context
+    // do not add step exeuctions
     return copy;
   }
 
