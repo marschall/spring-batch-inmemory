@@ -264,9 +264,12 @@ public final class InMemoryJobStorage {
   Set<JobExecution> findRunningJobExecutions(String jobName) {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
-    Set<JobExecution> runningJobExecutions = new HashSet<>();
     try {
       List<JobInstanceAndParameters> jobInstancesAndParameters = this.jobInstancesByName.get(jobName);
+      if (jobInstancesAndParameters == null) {
+        return Set.of();
+      }
+      Set<JobExecution> runningJobExecutions = new HashSet<>();
       for (JobInstanceAndParameters jobInstanceAndParameters : jobInstancesAndParameters) {
         List<Long> jobExecutionIds = this.getExecutionIds(jobInstanceAndParameters.getJobInstance());
         for (Long jobExecutionId : jobExecutionIds) {
@@ -666,7 +669,7 @@ public final class InMemoryJobStorage {
       StepExecution stepExecutionCopy = copyStepExecution(stepExecution);
       stepExecutions.put(stepExecutionId, stepExecutionCopy);
 
-      ExecutionContext stepExecutionContext = stepExecutionCopy.getExecutionContext();
+      ExecutionContext stepExecutionContext = stepExecution.getExecutionContext();
       if (stepExecutionContext != null) {
         // copying could in theory be done before acquiring the lock
         this.stepExecutionContextsById.put(stepExecutionId, copyExecutionContext(stepExecutionContext));

@@ -1,9 +1,12 @@
 package com.github.marschall.spring.batch.inmemory;
 
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.junit.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.Date;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -25,8 +28,12 @@ abstract class AbstractLoggingTests {
 
   @Test
   void launchJob() throws Exception {
+    long start = System.currentTimeMillis();
     JobExecution jobExecution = this.jobLauncherTestUtils.launchJob();
     assertEquals(ExitStatus.COMPLETED, jobExecution.getExitStatus());
+    long end = System.currentTimeMillis();
+    assertThat(jobExecution.getStartTime(), greaterThanOrEqualTo(new Date(start)));
+    assertThat(jobExecution.getStartTime(), lessThanOrEqualTo(new Date(end)));
   }
 
   @Test

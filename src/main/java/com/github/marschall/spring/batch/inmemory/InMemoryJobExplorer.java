@@ -1,5 +1,6 @@
 package com.github.marschall.spring.batch.inmemory;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -73,19 +74,18 @@ public final class InMemoryJobExplorer implements JobExplorer {
     if (executionId == null) {
       return null;
     }
-    // FIXME add dependencies
-    return this.storage.getJobExecution(executionId);
+    JobExecution jobExecution = this.storage.getJobExecution(executionId);
+    if (jobExecution != null) {
+      this.hidrateJobExecution(jobExecution);
+    }
+    return jobExecution;
   }
 
   @Override
   public JobExecution getLastJobExecution(JobInstance jobInstance) {
     Objects.requireNonNull(jobInstance, "jobInstance");
     JobExecution jobExecution = this.storage.getLastJobExecution(jobInstance);
-    // https://github.com/spring-projects/spring-batch/issues/3943
-    this.setJobExecutionDependencies(jobExecution);
-    for (StepExecution stepExecution : jobExecution.getStepExecutions()) {
-      this.setStepExecutionDependencies(stepExecution);
-    }
+    this.hidrateJobExecution(jobExecution);
     return jobExecution;
   }
 
@@ -119,12 +119,7 @@ public final class InMemoryJobExplorer implements JobExplorer {
   @Override
   public List<JobExecution> getJobExecutions(JobInstance jobInstance) {
     List<JobExecution> executions = this.storage.findJobExecutions(jobInstance);
-    for (JobExecution jobExecution : executions) {
-      this.setJobExecutionDependencies(jobExecution);
-      for (StepExecution stepExecution : jobExecution.getStepExecutions()) {
-        this.setStepExecutionDependencies(stepExecution);
-      }
-    }
+    this.hidrateJobExecutions(executions);
     return executions;
   }
 
@@ -133,7 +128,9 @@ public final class InMemoryJobExplorer implements JobExplorer {
     if (jobName == null) {
       return Set.of();
     }
-    return this.storage.findRunningJobExecutions(jobName);
+    Set<JobExecution> runningJobExecutions = this.storage.findRunningJobExecutions(jobName);
+    this.hidrateJobExecutions(runningJobExecutions);
+    return runningJobExecutions;
   }
 
   @Override
@@ -161,6 +158,19 @@ public final class InMemoryJobExplorer implements JobExplorer {
 
   private void setStepExecutionDependencies(StepExecution stepExecution) {
     stepExecution.setExecutionContext(this.storage.getStepExecutionContext(stepExecution));
+  }
+
+  private void hidrateJobExecutions(Collection<JobExecution> jobExecutions) {
+    for (JobExecution jobExecution : jobExecutions) {
+      this.hidrateJobExecution(jobExecution);
+    }
+  }
+
+  private void hidrateJobExecution(JobExecution jobExecution) {
+    this.setJobExecutionDependencies(jobExecution);
+    for (StepExecution stepExecution : jobExecution.getStepExecutions()) {
+      this.setStepExecutionDependencies(stepExecution);
+    }
   }
 
 }
