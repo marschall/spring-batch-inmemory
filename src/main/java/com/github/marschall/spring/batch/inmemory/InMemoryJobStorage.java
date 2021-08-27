@@ -84,22 +84,22 @@ public final class InMemoryJobStorage {
     Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
     try {
+      this.verifyNoJobInstanceUnlocked(jobName, jobParameters);
       return this.createJobInstanceUnlocked(jobName, jobParameters);
     } finally {
       writeLock.unlock();
     }
   }
 
+  private void verifyNoJobInstanceUnlocked(String jobName, JobParameters jobParameters) {
+    JobInstance jobInstance = this.getJobInstance(jobName, jobParameters);
+    if (jobInstance != null) {
+      throw new IllegalStateException("JobInstance must not already exist");
+    }
+  }
+
   private JobInstance createJobInstanceUnlocked(String jobName, JobParameters jobParameters) {
     List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
-    if (instancesAndParameters != null) {
-      for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
-        if (instanceAndParametes.areIdentifyingJoParametersEqualTo(jobParameters)) {
-          throw new IllegalStateException("JobInstance must not already exist");
-        }
-      }
-    }
-
     JobInstance jobInstance = new JobInstance(this.nextJobInstanceId++, jobName);
     jobInstance.incrementVersion();
 
