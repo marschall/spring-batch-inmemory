@@ -50,6 +50,7 @@ public final class InMemoryJobStorage {
   private final Map<Long, ExecutionContext> jobExecutionContextsById;
   private final Map<Long, ExecutionContext> stepExecutionContextsById;
   private final Map<Long, Map<Long, StepExecution>> stepExecutionsByJobExecutionId;
+  private final Map<StepExecutionKey, StepExecutionStatistics> stepExecutionStatistics;
 
   private final ReadWriteLock instanceLock;
   private long nextJobInstanceId;
@@ -67,6 +68,7 @@ public final class InMemoryJobStorage {
     this.stepExecutionContextsById = new HashMap<>();
     this.jobInstanceToExecutions = new HashMap<>();
     this.stepExecutionsByJobExecutionId = new HashMap<>();
+    this.stepExecutionStatistics = new HashMap<>();
     this.instanceLock = new ReentrantReadWriteLock();
     this.nextJobInstanceId = 1L;
     this.nextJobExecutionId = 1L;
@@ -639,27 +641,13 @@ public final class InMemoryJobStorage {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
-      List<Long> jobExecutionIds = this.getExecutionIds(jobInstance);
-      for (Long jobExecutionId : jobExecutionIds) {
-        // TODO access by step name would be great
-        // TODO reverse ordered access would be great
-        Collection<StepExecution> stepExecutions = this.getStepExecutionsOfJobExecutionUnlocked(jobExecutionId);
-        if (stepExecutions != null) {
-          for (StepExecution stepExecution : stepExecutions) {
-            if (stepExecution.getStepName().equals(stepName)) {
-              if (latest == null) {
-                latest = stepExecution;
-              } else if (latest.getStartTime().before(stepExecution.getStartTime())) {
-                latest = stepExecution;
-              } else if (latest.getStartTime().equals(stepExecution.getStartTime())
-                      // Use step execution ID as the tie breaker if start time is identical
-                      && (latest.getId().compareTo(stepExecution.getId()) < 0)) {
-                latest = stepExecution;
-              }
-            }
-          }
-        }
+      StepExecutionStatistics statistics = this.stepExecutionStatistics.get(new StepExecutionKey(jobInstance.getInstanceId(), stepName));
+      if (statistics == null) {
+        return null;
       }
+      Long lastJobExecutionId = statistics.getLastJobExecutionId();
+      Long lastStepExecutionId = statistics.getLastStepExecutionId();
+      latest = this.stepExecutionsByJobExecutionId.get(lastJobExecutionId).get(lastStepExecutionId);
     } finally {
       readLock.unlock();
     }
@@ -692,6 +680,16 @@ public final class InMemoryJobStorage {
       if (stepExecutionContext != null) {
         // copying could in theory be done before acquiring the lock
         this.stepExecutionContextsById.put(stepExecutionId, copyExecutionContext(stepExecutionContext));
+      }
+
+      Long jobInstanceId = stepExecution.getJobExecution().getJobInstance().getId();
+      StepExecutionKey executionKey = new StepExecutionKey(jobInstanceId, stepExecution.getStepName());
+      StepExecutionStatistics statistics = this.stepExecutionStatistics.get(executionKey);
+      if (statistics == null) {
+        this.stepExecutionStatistics.put(executionKey, new StepExecutionStatistics(stepExecutionId, jobExecutionId));
+      } else {
+        statistics.setLastExecutionIds(stepExecutionId, jobExecutionId);
+        statistics.incrementStepExecutionCount();
       }
     } finally {
       writeLock.unlock();
@@ -741,26 +739,18 @@ public final class InMemoryJobStorage {
   }
 
   int countStepExecutions(JobInstance jobInstance, String stepName) {
-    int count = 0;
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
-      List<Long> jobExecutionIds = this.getExecutionIds(jobInstance);
-      for (Long jobExecutionId : jobExecutionIds) {
-        Collection<StepExecution> stepExecutions = this.getStepExecutionsOfJobExecutionUnlocked(jobExecutionId);
-        if (stepExecutions != null) {
-          // TODO access by step name would be great
-          for (StepExecution stepExecution : stepExecutions) {
-            if (stepExecution.getStepName().equals(stepName)) {
-              count++;
-            }
-          }
-        }
+      StepExecutionStatistics statistics = this.stepExecutionStatistics.get(new StepExecutionKey(jobInstance.getInstanceId(), stepName));
+      if (statistics != null) {
+        return statistics.getStepExecutionCount();
+      } else {
+        return 0;
       }
     } finally {
       readLock.unlock();
     }
-    return count;
   }
 
   private static ExecutionContext copyExecutionContext(ExecutionContext original) {
@@ -856,12 +846,81 @@ public final class InMemoryJobStorage {
       this.stepExecutionContextsById.clear();
       this.jobInstanceToExecutions.clear();
       this.stepExecutionsByJobExecutionId.clear();
+      this.stepExecutionStatistics.clear();
       this.nextJobInstanceId = 1L;
       this.nextJobExecutionId = 1L;
       this.nextStepExecutionId = 1L;
     } finally {
       writeLock.unlock();
     }
+  }
+
+  static final class StepExecutionKey {
+
+    private final long jobInstanceId;
+
+    private final String stepName;
+
+    StepExecutionKey(long jobInstanceId, String stepName) {
+      this.jobInstanceId = jobInstanceId;
+      this.stepName = stepName;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(this.jobInstanceId, this.stepName);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (!(obj instanceof StepExecutionKey)) {
+        return false;
+      }
+      StepExecutionKey other = (StepExecutionKey) obj;
+      return (this.jobInstanceId == other.jobInstanceId)
+              && Objects.equals(this.stepName, other.stepName);
+    }
+
+  }
+
+  static final class StepExecutionStatistics {
+
+    private Long lastStepExecutionId;
+
+    private Long lastJobExecutionId;
+
+    private int stepExecutionCount;
+
+    StepExecutionStatistics(Long lastStepExecutionId, Long lastJobExecutionId) {
+      this.lastStepExecutionId = lastStepExecutionId;
+      this.lastJobExecutionId = lastJobExecutionId;
+      this.stepExecutionCount = 1;
+    }
+
+    Long getLastStepExecutionId() {
+      return this.lastStepExecutionId;
+    }
+
+    Long getLastJobExecutionId() {
+      return this.lastJobExecutionId;
+    }
+
+    void setLastExecutionIds(Long lastStepExecutionId, Long lastJobExecutionId) {
+      this.lastStepExecutionId = lastStepExecutionId;
+      this.lastJobExecutionId = lastJobExecutionId;
+    }
+
+    int getStepExecutionCount() {
+      return this.stepExecutionCount;
+    }
+
+    void incrementStepExecutionCount() {
+      this.stepExecutionCount += 1;
+    }
+
   }
 
   static final class JobInstanceAndParameters {
