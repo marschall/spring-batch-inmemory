@@ -46,7 +46,7 @@ public final class InMemoryJobStorage {
   private final Map<Long, JobInstance> instancesById;
   private final Map<String, List<JobInstanceAndParameters>> jobInstancesByName;
   private final Map<Long, JobExecution> jobExecutionsById;
-  private final Map<Long, List<Long>> jobInstanceToExecutions;
+  private final Map<Long, JobExecutions> jobInstanceToExecutions;
   private final Map<Long, ExecutionContext> jobExecutionContextsById;
   private final Map<Long, ExecutionContext> stepExecutionContextsById;
   private final Map<Long, Map<Long, StepExecution>> stepExecutionsByJobExecutionId;
@@ -74,7 +74,16 @@ public final class InMemoryJobStorage {
   }
 
   private List<Long> getExecutionIds(JobInstance jobInstance) {
-    return this.jobInstanceToExecutions.getOrDefault(jobInstance.getId(), List.of());
+    JobExecutions jobExecutions = this.jobInstanceToExecutions.get(jobInstance.getId());
+    if (jobExecutions != null) {
+      return jobExecutions.getJobExecutionIds();
+    } else {
+      return List.of();
+    }
+  }
+
+  private JobExecutions getJobExecutionsUnlocked(JobInstance jobInstance) {
+    return this.jobInstanceToExecutions.get(jobInstance.getId());
   }
 
   JobInstance createJobInstance(String jobName, JobParameters jobParameters) {
@@ -138,8 +147,9 @@ public final class InMemoryJobStorage {
 
   }
 
-  private boolean mapJobExecutionUnlocked(JobInstance jobInstance, JobExecution jobExecution) {
-    return this.jobInstanceToExecutions.computeIfAbsent(jobInstance.getId(), id -> new ArrayList<>()).add(jobExecution.getId());
+  private void mapJobExecutionUnlocked(JobInstance jobInstance, JobExecution jobExecution) {
+    JobExecutions jobExecutions = this.jobInstanceToExecutions.computeIfAbsent(jobInstance.getId(), jobInstanceId -> new JobExecutions());
+    jobExecutions.addJobExecutionId(jobExecution.getId());
   }
 
   ExecutionContext getExecutionContext(JobExecution jobExecution) {
@@ -160,40 +170,24 @@ public final class InMemoryJobStorage {
     try {
       // Find all jobs matching the runtime information.
       JobInstance jobInstance = this.getJobInstanceUnlocked(jobName, jobParameters);
-      ExecutionContext executionContext;
+      ExecutionContext executionContext = null;
 
 
       // existing job instance found
       if (jobInstance != null) {
-        List<Long> executionIds = this.getExecutionIds(jobInstance);
-
-        if (executionIds.isEmpty()) {
+        JobExecutions jobExecutions = this.getJobExecutionsUnlocked(jobInstance);
+        if (jobExecutions == null) {
           throw new IllegalStateException("Cannot find any job execution for job instance: " + jobInstance);
         }
 
-        JobExecution lastJobExecution = null;
-        for (Long executionId : executionIds) {
-          JobExecution jobExecution = this.jobExecutionsById.get(executionId);
-          if (jobExecution.isRunning() || jobExecution.isStopping()) {
-            throw new JobExecutionAlreadyRunningException("A job execution for this job is already running: " + jobInstance);
-          }
-          BatchStatus status = jobExecution.getStatus();
-          if (status == BatchStatus.UNKNOWN) {
-            throw new JobRestartException("Cannot restart job from UNKNOWN status. "
-                    + "The last execution ended with a failure that could not be rolled back, "
-                    + "so it may be dangerous to proceed. Manual intervention is probably necessary.");
-          }
-          if (hasIdentifyingParameter(jobExecution) && ((status == BatchStatus.COMPLETED) || (status == BatchStatus.ABANDONED))) {
-            throw new JobInstanceAlreadyCompleteException(
-                    "A job instance already exists and is complete for parameters=" + jobParameters
-                    + ".  If you want to run this job again, change the parameters.");
-          }
-          if ((lastJobExecution == null) || lastJobExecution.getCreateTime().before(jobExecution.getCreateTime())) {
-            lastJobExecution = jobExecution;
-          }
+        if (jobExecutions.hasBlockingJobExecutionId()) {
+          // will throw
+          this.reportBlockingJobExecution(jobInstance, jobParameters, jobExecutions);
+        } else {
+          Long lastJobExecutionId = jobExecutions.getLastJobExecutionId();
+          JobExecution lastJobExecution = this.jobExecutionsById.get(lastJobExecutionId);
+          executionContext = copyExecutionContext(this.jobExecutionContextsById.get(lastJobExecution.getId()));
         }
-
-        executionContext = copyExecutionContext(this.jobExecutionContextsById.get(lastJobExecution.getId()));
       } else {
         // no job found, create one
         jobInstance = this.createJobInstanceUnlocked(jobName, jobParameters);
@@ -213,6 +207,32 @@ public final class InMemoryJobStorage {
       return jobExecution;
     } finally {
       writeLock.unlock();
+    }
+  }
+
+  private void reportBlockingJobExecution(JobInstance jobInstance, JobParameters jobParameters, JobExecutions jobExecutions)
+          throws JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException {
+    List<Long> executionIds = jobExecutions.getJobExecutionIds();
+    if (executionIds.isEmpty()) {
+      throw new IllegalStateException("Cannot find any job execution for job instance: " + jobInstance);
+    }
+
+    for (Long executionId : executionIds) {
+      JobExecution jobExecution = this.jobExecutionsById.get(executionId);
+      if (jobExecution.isRunning() || jobExecution.isStopping()) {
+        throw new JobExecutionAlreadyRunningException("A job execution for this job is already running: " + jobInstance);
+      }
+      BatchStatus status = jobExecution.getStatus();
+      if (status == BatchStatus.UNKNOWN) {
+        throw new JobRestartException("Cannot restart job from UNKNOWN status. "
+                + "The last execution ended with a failure that could not be rolled back, "
+                + "so it may be dangerous to proceed. Manual intervention is probably necessary.");
+      }
+      if (((status == BatchStatus.COMPLETED) || (status == BatchStatus.ABANDONED)) && hasIdentifyingParameter(jobExecution)) {
+        throw new JobInstanceAlreadyCompleteException(
+                "A job instance already exists and is complete for parameters=" + jobParameters
+                + ".  If you want to run this job again, change the parameters.");
+      }
     }
   }
 
@@ -239,9 +259,9 @@ public final class InMemoryJobStorage {
 
   private JobExecution getLastJobExecutionUnlocked(JobInstance jobInstance) {
     // last should have greatest id
-    List<Long> executionIds = this.getExecutionIds(jobInstance);
-    if (!executionIds.isEmpty()) {
-      Long lastExecutionId = executionIds.get(executionIds.size() - 1);
+    JobExecutions jobExecutions = this.getJobExecutionsUnlocked(jobInstance);
+    if (jobExecutions != null) {
+      Long lastExecutionId = jobExecutions.getLastJobExecutionId();
       JobExecution lastJobExecution = this.jobExecutionsById.get(lastExecutionId);
       return copyJobExecution(lastJobExecution);
     } else {
@@ -324,6 +344,7 @@ public final class InMemoryJobStorage {
         }
         jobExecution.incrementVersion();
         this.jobExecutionsById.put(id, copyJobExecution(jobExecution));
+        this.updateBlockingStatusUnlocked(jobExecution);
       }
     } finally {
       writeLock.unlock();
@@ -728,6 +749,7 @@ public final class InMemoryJobStorage {
       for (Long jobExecutionId : jobExecutionIds) {
         Collection<StepExecution> stepExecutions = this.getStepExecutionsOfJobExecutionUnlocked(jobExecutionId);
         if (stepExecutions != null) {
+          // TODO access by step name would be great
           for (StepExecution stepExecution : stepExecutions) {
             if (stepExecution.getStepName().equals(stepName)) {
               count++;
@@ -789,6 +811,36 @@ public final class InMemoryJobStorage {
     return copy;
   }
 
+  private void updateBlockingStatusUnlocked(JobExecution jobExecution) {
+    JobExecutions jobExecutions = this.jobInstanceToExecutions.get(jobExecution.getJobInstance().getId());
+    if (jobExecutions == null) {
+      throw new IllegalStateException("JobExecution must already be registered");
+    }
+    boolean blocking = hasBlockingStatus(jobExecution);
+    Long jobExecutionId = jobExecution.getId();
+    if (blocking) {
+      jobExecutions.addBlockingJobExecutionId(jobExecutionId);
+    } else {
+      jobExecutions.removeBlockingJobExecutionId(jobExecutionId);
+    }
+  }
+
+  private static boolean hasBlockingStatus(JobExecution jobExecution) {
+    if (jobExecution.isRunning() || jobExecution.isStopping()) {
+      return true;
+    }
+
+    switch (jobExecution.getStatus()) {
+      case UNKNOWN:
+        return true;
+      case COMPLETED:
+      case ABANDONED:
+        return hasIdentifyingParameter(jobExecution);
+      default:
+        return false;
+    }
+  }
+
   /**
    * Clears all data, affects all {@link InMemoryJobRepository} and {@link InMemoryJobExplorer}
    * backed by this object.
@@ -827,10 +879,6 @@ public final class InMemoryJobStorage {
       return this.jobInstance;
     }
 
-    Map<String, JobParameter> getIdentifyingJoParameters() {
-      return this.identifyingJoParameters;
-    }
-
     boolean areIdentifyingJoParametersEqualTo(JobParameters otherJobParameters) {
       Map<String, JobParameter> otherJobParametersMap = otherJobParameters.getParameters();
       for (Entry<String, JobParameter> identifyingJoParameter : this.identifyingJoParameters.entrySet()) {
@@ -847,6 +895,43 @@ public final class InMemoryJobStorage {
         }
       }
       return true;
+    }
+
+  }
+
+  static final class JobExecutions {
+
+    private final Set<Long> blockingJobExecutionIds;
+
+    private final List<Long> jobExecutionIds;
+
+    JobExecutions() {
+      this.blockingJobExecutionIds = new HashSet<>();
+      this.jobExecutionIds = new ArrayList<>();
+    }
+
+    void addBlockingJobExecutionId(Long jobExecutionId) {
+      this.blockingJobExecutionIds.add(jobExecutionId);
+    }
+
+    void addJobExecutionId(Long jobExecutionId) {
+      this.jobExecutionIds.add(jobExecutionId);
+    }
+
+    void removeBlockingJobExecutionId(Long jobExecutionId) {
+      this.blockingJobExecutionIds.remove(jobExecutionId);
+    }
+
+    boolean hasBlockingJobExecutionId() {
+      return !this.blockingJobExecutionIds.isEmpty();
+    }
+
+    Long getLastJobExecutionId() {
+      return this.jobExecutionIds.get(this.jobExecutionIds.size() - 1);
+    }
+
+    List<Long> getJobExecutionIds() {
+      return this.jobExecutionIds;
     }
 
   }

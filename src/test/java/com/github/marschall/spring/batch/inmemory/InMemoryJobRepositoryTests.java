@@ -154,7 +154,7 @@ class InMemoryJobRepositoryTests {
 
     this.jobRepository.update(this.jobExecution);
 
-    assertThrows(JobExecutionAlreadyRunningException.class, ()-> this.jobRepository.createJobExecution(this.jobInstance.getJobName(), this.jobParameters));
+    assertThrows(JobExecutionAlreadyRunningException.class, () -> this.jobRepository.createJobExecution(this.jobInstance.getJobName(), this.jobParameters));
   }
 
   @Test
@@ -164,7 +164,7 @@ class InMemoryJobRepositoryTests {
 
     this.jobRepository.update(this.jobExecution);
 
-    assertThrows(JobRestartException.class, ()-> this.jobRepository.createJobExecution(this.jobInstance.getJobName(), this.jobParameters));
+    assertThrows(JobRestartException.class, () -> this.jobRepository.createJobExecution(this.jobInstance.getJobName(), this.jobParameters));
   }
 
   @Test
@@ -174,7 +174,7 @@ class InMemoryJobRepositoryTests {
 
     this.jobRepository.update(this.jobExecution);
 
-    assertThrows(JobInstanceAlreadyCompleteException.class, ()-> this.jobRepository.createJobExecution(this.jobInstance.getJobName(), this.jobParameters));
+    assertThrows(JobInstanceAlreadyCompleteException.class, () -> this.jobRepository.createJobExecution(this.jobInstance.getJobName(), this.jobParameters));
   }
 
   @Test
