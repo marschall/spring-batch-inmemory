@@ -1,6 +1,7 @@
 package com.github.marschall.spring.batch.inmemory;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -17,7 +18,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
@@ -42,8 +42,6 @@ import org.springframework.lang.Nullable;
  * Instances of this class are thread-safe.
  */
 public final class InMemoryJobStorage {
-
-  // TODO JobExecution#setCreateTime
 
   private final Map<Long, JobInstance> instancesById;
   private final Map<String, List<JobInstanceAndParameters>> jobInstancesByName;
@@ -112,7 +110,7 @@ public final class InMemoryJobStorage {
     }
     Map<String, JobParameter> identifyingJoParameters = jobParameters.getParameters().entrySet().stream()
                                  .filter(entry -> entry.getValue().isIdentifying())
-                                 .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+                                 .collect(toMap(Entry::getKey, Entry::getValue));
     instancesAndParameters.add(new JobInstanceAndParameters(jobInstance, identifyingJoParameters));
 
     return jobInstance;

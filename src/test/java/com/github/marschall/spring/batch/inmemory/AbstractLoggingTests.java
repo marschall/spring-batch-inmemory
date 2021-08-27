@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.junit.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.util.Date;
 import java.util.List;
@@ -32,8 +33,14 @@ abstract class AbstractLoggingTests {
     JobExecution jobExecution = this.jobLauncherTestUtils.launchJob();
     assertEquals(ExitStatus.COMPLETED, jobExecution.getExitStatus());
     long end = System.currentTimeMillis();
+
     assertThat(jobExecution.getStartTime(), greaterThanOrEqualTo(new Date(start)));
     assertThat(jobExecution.getStartTime(), lessThanOrEqualTo(new Date(end)));
+
+    assertNotNull(jobExecution.getCreateTime());
+    assertThat(jobExecution.getCreateTime(), greaterThanOrEqualTo(new Date(start)));
+    assertThat(jobExecution.getCreateTime(), lessThanOrEqualTo(jobExecution.getStartTime()));
+    assertThat(jobExecution.getCreateTime(), lessThanOrEqualTo(new Date(end)));
   }
 
   @Test
