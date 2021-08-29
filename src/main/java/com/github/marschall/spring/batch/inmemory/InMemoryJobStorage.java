@@ -168,8 +168,8 @@ public final class InMemoryJobStorage {
       this.jobExecutionContextsById.put(jobExecution.getId(), copyExecutionContext(executionContext));
     }
   }
-  
-  private ExecutionContext loadExecutionContextUnlocked(JobExecution jobExecution) {
+
+  private ExecutionContext loadJobExecutionContextUnlocked(JobExecution jobExecution) {
     ExecutionContext executionContext = this.jobExecutionContextsById.get(jobExecution.getId());
     // we assume the job was initialized with an empty execution context
     // therefore if the stored one is also empty there is no need to update it
@@ -179,16 +179,51 @@ public final class InMemoryJobStorage {
       return null;
     }
   }
-  
-  void setExecutionContext(JobExecution jobExecution) {
+
+  void setJobExecutionContext(JobExecution jobExecution) {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
-      ExecutionContext executionContext = this.loadExecutionContextUnlocked(jobExecution);
+      ExecutionContext executionContext = this.loadJobExecutionContextUnlocked(jobExecution);
       if (executionContext != null) {
         // we assume the job was initialized with an empty execution context
         // therefore if the stored one is also empty there is no need to update it
         jobExecution.setExecutionContext(executionContext);
+      }
+    } finally {
+      readLock.unlock();
+    }
+  }
+
+  private void storeStepExecutionContextUnlocked(StepExecution stepExecution) {
+    ExecutionContext executionContext = stepExecution.getExecutionContext();
+    if (executionContext.isEmpty()) {
+      this.stepExecutionContextsById.put(stepExecution.getId(), EMPTY_EXECUTION_CONTEXT);
+    } else {
+      this.stepExecutionContextsById.put(stepExecution.getId(), copyExecutionContext(executionContext));
+    }
+  }
+
+  private ExecutionContext loadStepExecutionContextUnlocked(StepExecution stepExecution) {
+    ExecutionContext executionContext = this.stepExecutionContextsById.get(stepExecution.getId());
+    // we assume the job was initialized with an empty execution context
+    // therefore if the stored one is also empty there is no need to update it
+    if (!executionContext.isEmpty()) {
+      return copyExecutionContext(executionContext);
+    } else {
+      return null;
+    }
+  }
+  
+  void setStepExecutionContext(StepExecution stepExecution) {
+    Lock readLock = this.instanceLock.readLock();
+    readLock.lock();
+    try {
+      ExecutionContext executionContext = this.loadStepExecutionContextUnlocked(stepExecution);
+      if (executionContext != null) {
+        // we assume the job was initialized with an empty execution context
+        // therefore if the stored one is also empty there is no need to update it
+        stepExecution.setExecutionContext(executionContext);
       }
     } finally {
       readLock.unlock();
@@ -659,18 +694,6 @@ public final class InMemoryJobStorage {
     }
   }
 
-  ExecutionContext getStepExecutionContext(StepExecution stepExecution) {
-    Lock readLock = this.instanceLock.readLock();
-    readLock.lock();
-    try {
-      ExecutionContext executionContext = this.stepExecutionContextsById.get(stepExecution.getId());
-      return copyExecutionContext(executionContext);
-    } finally {
-      readLock.unlock();
-    }
-  }
-
-
   StepExecution getLastStepExecution(JobInstance jobInstance, String stepName) {
     StepExecution latest = null;
     Lock readLock = this.instanceLock.readLock();
@@ -704,6 +727,7 @@ public final class InMemoryJobStorage {
         this.stepExecutionsByJobExecutionId.put(jobExecutionId, stepExecutions);
       }
 
+      Long jobInstanceId = stepExecution.getJobExecution().getJobInstance().getId();
       Long stepExecutionId = this.nextStepExecutionId++;
       stepExecution.setId(stepExecutionId);
       stepExecution.incrementVersion();
@@ -711,13 +735,9 @@ public final class InMemoryJobStorage {
       StepExecution stepExecutionCopy = copyStepExecution(stepExecution);
       stepExecutions.put(stepExecutionId, stepExecutionCopy);
 
-      ExecutionContext stepExecutionContext = stepExecution.getExecutionContext();
-      if (stepExecutionContext != null) {
-        // copying could in theory be done before acquiring the lock
-        this.stepExecutionContextsById.put(stepExecutionId, copyExecutionContext(stepExecutionContext));
-      }
+      this.storeStepExecutionContextUnlocked(stepExecution);
 
-      Long jobInstanceId = stepExecution.getJobExecution().getJobInstance().getId();
+
       StepExecutionKey executionKey = new StepExecutionKey(jobInstanceId, stepExecution.getStepName());
       StepExecutionStatistics statistics = this.stepExecutionStatistics.get(executionKey);
       if (statistics == null) {
@@ -759,14 +779,12 @@ public final class InMemoryJobStorage {
   }
 
   void updateStepExecutionContext(StepExecution stepExecution) {
-    Long stepExecutionId = stepExecution.getId();
     ExecutionContext stepExecutionContext = stepExecution.getExecutionContext();
     if (stepExecutionContext != null) {
-      ExecutionContext stepExecutionContextCopy = copyExecutionContext(stepExecutionContext);
       Lock writeLock = this.instanceLock.writeLock();
       writeLock.lock();
       try {
-        this.stepExecutionContextsById.put(stepExecutionId, stepExecutionContextCopy);
+        this.storeStepExecutionContextUnlocked(stepExecution);
       } finally {
         writeLock.unlock();
       }

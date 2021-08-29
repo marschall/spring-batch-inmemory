@@ -153,11 +153,11 @@ public final class InMemoryJobExplorer implements JobExplorer {
   private void setJobExecutionDependencies(JobExecution jobExecution) {
     List<StepExecution> stepExecutions = this.storage.getStepExecutions(jobExecution);
     jobExecution.addStepExecutions(stepExecutions);
-    this.storage.setExecutionContext(jobExecution);
+    this.storage.setJobExecutionContext(jobExecution);
   }
 
   private void setStepExecutionDependencies(StepExecution stepExecution) {
-    stepExecution.setExecutionContext(this.storage.getStepExecutionContext(stepExecution));
+    this.storage.setStepExecutionContext(stepExecution);
   }
 
   private void hidrateJobExecutions(Collection<JobExecution> jobExecutions) {
