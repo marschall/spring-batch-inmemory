@@ -1,19 +1,24 @@
 Spring Batch In-Memory
 ======================
 
-In memory implementations of the Spring Batch `JobRepository` and `JobExplorer` interfaces as the map based DAO implementations (`MapJobInstanceDao`, `MapJobExecutionDao`, `MapStepExecutionDao` and `MapExecutionContextDao`) are deprecated.
+Alternative implementations of the Spring Batch `JobRepository` and `JobExplorer` interfaces as the map based DAO implementations (`MapJobInstanceDao`, `MapJobExecutionDao`, `MapStepExecutionDao` and `MapExecutionContextDao`) are deprecated.
 
-This project allows to run Spring Batch integration tests either without JDBC or with rolling back all DML operations.
+We offer two different implementations:
+
+- In memory implementations that save all data in memory. These require cleanup.
+- Null implementations that do not save any data and therefore do not require any cleanup.
+
+This project allows to run Spring Batch integration tests either without a JDBC `DataSource` or with rolling back all DML operations.
 
 ```xml
 <dependency>
   <groupId>com.github.marschall</groupId>
   <artifactId>spring-batch-inmemory</artifactId>
-  <version>0.2.1</version>
+  <version>0.2.2</version>
 </dependency>
 ```
 
-There are two ways this project can be used, either through `SimpleBatchConfiguration` and `BatchConfigurer` or through `InMemoryBatchConfiguration`.
+There are two ways this project can be used, either through `SimpleBatchConfiguration` and `BatchConfigurer` or through `InMemoryBatchConfiguration`/`NullBatchConfiguration`.
 
 SimpleBatchConfiguration and BatchConfigurer
 --------------------------------------------
@@ -85,6 +90,24 @@ class MySpringBatchIntegrationTests {
 
 }
 ```
+
+Clearing the Repository
+-----------------------
+
+If you want to automatically clear the job repository of job instances and executions after a test you can use `InMemoryBatchConfiguration` together with `@ClearJobRepository`.
+
+```java
+@SpringBatchTest
+@ClearJobRepository(AFTER_TEST)
+class MySpringBatchIntegrationTests {
+
+}
+```
+
+Limitations
+-----------
+
+- Objects in a `ExecutionContext` are not copied. You should therefore refrain from mutating objects in a `ExecutionContext` but rather replace them with updated ones.
 
 
 Implementation Notes
