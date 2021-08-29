@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -42,6 +43,13 @@ import org.springframework.lang.Nullable;
  * Instances of this class are thread-safe.
  */
 public final class InMemoryJobStorage {
+  
+  /**
+   * Since creating an {@link ExecutionContext} is quite heavy as it involves creating a new
+   * {@link ConcurrentHashMap} we use this as a sentinel for an empty execution context.
+   * We use this instance only internally and never pass it out or modify it.
+   */
+  private static final ExecutionContext EMPTY_EXECUTION_CONTEXT = new ExecutionContext();
 
   private final Map<Long, JobInstance> instancesById;
   private final Map<String, List<JobInstanceAndParameters>> jobInstancesByName;
@@ -134,13 +142,11 @@ public final class InMemoryJobStorage {
     try {
       Long jobExecutionId = this.nextJobExecutionId++;
       JobExecution jobExecution = new JobExecution(jobInstance, jobExecutionId, jobParameters, jobConfigurationLocation);
-      ExecutionContext executionContext = new ExecutionContext();
-      jobExecution.setExecutionContext(executionContext);
       jobExecution.setLastUpdated(new Date());
       jobExecution.incrementVersion();
 
       this.jobExecutionsById.put(jobExecutionId, copyJobExecution(jobExecution));
-      this.jobExecutionContextsById.put(jobExecutionId, copyExecutionContext(executionContext));
+      this.storeJobExecutionContextUnlocked(jobExecution);
       this.mapJobExecutionUnlocked(jobInstance, jobExecution);
       return jobExecution;
     } finally {
@@ -154,12 +160,36 @@ public final class InMemoryJobStorage {
     jobExecutions.addJobExecutionId(jobExecution.getId());
   }
 
-  ExecutionContext getExecutionContext(JobExecution jobExecution) {
+  private void storeJobExecutionContextUnlocked(JobExecution jobExecution) {
+    ExecutionContext executionContext = jobExecution.getExecutionContext();
+    if (executionContext.isEmpty()) {
+      this.jobExecutionContextsById.put(jobExecution.getId(), EMPTY_EXECUTION_CONTEXT);
+    } else {
+      this.jobExecutionContextsById.put(jobExecution.getId(), copyExecutionContext(executionContext));
+    }
+  }
+  
+  private ExecutionContext loadExecutionContextUnlocked(JobExecution jobExecution) {
+    ExecutionContext executionContext = this.jobExecutionContextsById.get(jobExecution.getId());
+    // we assume the job was initialized with an empty execution context
+    // therefore if the stored one is also empty there is no need to update it
+    if (!executionContext.isEmpty()) {
+      return copyExecutionContext(executionContext);
+    } else {
+      return null;
+    }
+  }
+  
+  void setExecutionContext(JobExecution jobExecution) {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
-      ExecutionContext executionContext = this.jobExecutionContextsById.get(jobExecution.getId());
-      return copyExecutionContext(executionContext);
+      ExecutionContext executionContext = this.loadExecutionContextUnlocked(jobExecution);
+      if (executionContext != null) {
+        // we assume the job was initialized with an empty execution context
+        // therefore if the stored one is also empty there is no need to update it
+        jobExecution.setExecutionContext(executionContext);
+      }
     } finally {
       readLock.unlock();
     }
@@ -188,22 +218,28 @@ public final class InMemoryJobStorage {
         } else {
           Long lastJobExecutionId = jobExecutions.getLastJobExecutionId();
           JobExecution lastJobExecution = this.jobExecutionsById.get(lastJobExecutionId);
-          executionContext = copyExecutionContext(this.jobExecutionContextsById.get(lastJobExecution.getId()));
+          ExecutionContext lastExecutionContext = this.jobExecutionContextsById.get(lastJobExecution.getId());
+          if (!lastExecutionContext.isEmpty()) {
+            // if empty use the default empty execution context
+            executionContext = copyExecutionContext(lastExecutionContext);
+          }
         }
       } else {
         // no job found, create one
         jobInstance = this.createJobInstanceUnlocked(jobName, jobParameters);
-        executionContext = new ExecutionContext();
+        // use default empty execution context
       }
 
       JobExecution jobExecution = new JobExecution(jobInstance, jobParameters, null);
-      jobExecution.setExecutionContext(executionContext);
+      if (executionContext != null) {
+        jobExecution.setExecutionContext(executionContext);
+      }
       jobExecution.setLastUpdated(new Date());
 
       // Save the JobExecution so that it picks up an ID (useful for clients
       // monitoring asynchronous executions):
       this.saveJobExecutionUnlocked(jobExecution);
-      this.updateJobExecutionContextUnlocked(jobExecution.getId(), executionContext);
+      this.storeJobExecutionContextUnlocked(jobExecution);
       this.mapJobExecutionUnlocked(jobInstance, jobExecution);
 
       return jobExecution;
@@ -358,22 +394,16 @@ public final class InMemoryJobStorage {
   }
 
   void updateJobExecutionContext(JobExecution jobExecution) {
-    Long jobExecutionId = jobExecution.getId();
     ExecutionContext jobExecutionContext = jobExecution.getExecutionContext();
     if (jobExecutionContext != null) {
       Lock writeLock = this.instanceLock.writeLock();
       writeLock.lock();
       try {
-        this.updateJobExecutionContextUnlocked(jobExecutionId, jobExecutionContext);
+        this.storeJobExecutionContextUnlocked(jobExecution);
       } finally {
         writeLock.unlock();
       }
     }
-  }
-
-  private void updateJobExecutionContextUnlocked(Long jobExecutionId, ExecutionContext jobExecutionContext) {
-    ExecutionContext jobExecutionContextCopy = copyExecutionContext(jobExecutionContext);
-    this.jobExecutionContextsById.put(jobExecutionId, jobExecutionContextCopy);
   }
 
   void synchronizeStatus(JobExecution jobExecution) {

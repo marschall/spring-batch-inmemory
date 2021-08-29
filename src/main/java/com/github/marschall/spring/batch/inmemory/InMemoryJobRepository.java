@@ -127,8 +127,7 @@ public final class InMemoryJobRepository implements JobRepository {
       ExecutionContext stepExecutionContext = this.storage.getStepExecutionContext(lastExecution);
       lastExecution.setExecutionContext(stepExecutionContext);
 
-      ExecutionContext jobExecutionContext = this.storage.getExecutionContext(lastExecution.getJobExecution());
-      lastExecution.getJobExecution().setExecutionContext(jobExecutionContext);
+      this.storage.setExecutionContext(lastExecution.getJobExecution());
     }
 
     return lastExecution;
@@ -149,7 +148,7 @@ public final class InMemoryJobRepository implements JobRepository {
     JobExecution jobExecution = this.storage.getLastJobExecution(jobInstance);
 
     if (jobExecution != null) {
-      jobExecution.setExecutionContext(this.storage.getExecutionContext(jobExecution));
+      this.storage.setExecutionContext(jobExecution);
       List<StepExecution> stepExecutions = this.storage.getStepExecutions(jobExecution);
       jobExecution.addStepExecutions(stepExecutions);
     }
