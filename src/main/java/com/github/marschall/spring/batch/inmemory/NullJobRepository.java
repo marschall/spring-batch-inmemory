@@ -14,7 +14,6 @@ import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.repository.JobRepository;
-import org.springframework.batch.item.ExecutionContext;
 import org.springframework.lang.Nullable;
 
 /**
@@ -54,8 +53,6 @@ public final class NullJobRepository implements JobRepository {
     Objects.requireNonNull(jobParameters, "jobParameters");
 
     JobExecution jobExecution = new JobExecution(jobInstance, JOB_EXECUTION_ID.incrementAndGet(), jobParameters, jobConfigurationLocation);
-    ExecutionContext executionContext = new ExecutionContext();
-    jobExecution.setExecutionContext(executionContext);
     jobExecution.setLastUpdated(new Date());
     jobExecution.incrementVersion();
 
@@ -73,7 +70,6 @@ public final class NullJobRepository implements JobRepository {
 
     JobExecution jobExecution = new JobExecution(jobInstance, JOB_EXECUTION_ID.incrementAndGet(), jobParameters, null);
     jobExecution.incrementVersion();
-    jobExecution.setExecutionContext(new ExecutionContext());
     jobExecution.setLastUpdated(new Date());
 
     return jobExecution;

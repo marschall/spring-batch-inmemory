@@ -588,6 +588,8 @@ public final class InMemoryJobStorage {
       stepExecutions.sort(Comparator.comparing(StepExecution::getId));
       for (int i = 0; i < stepExecutions.size(); i++) {
         StepExecution stepExecution = stepExecutions.get(i);
+        // FIXME avoid job execution copy
+        // FIXME StepExecution constructor already adds to JobExecution
         stepExecutions.set(i, copyStepExecution(stepExecution));
       }
       return stepExecutions;
@@ -761,6 +763,7 @@ public final class InMemoryJobStorage {
   }
 
   private static JobExecution copyJobExecution(JobExecution original) {
+//    JobExecution copy = new JobExecution(original);
     JobExecution copy = new JobExecution(original.getJobInstance(), original.getId(), original.getJobParameters(), original.getJobConfigurationName());
     copy.setVersion(original.getVersion());
     copy.setStatus(original.getStatus());
