@@ -36,7 +36,7 @@ import org.springframework.lang.Nullable;
 /**
  * Backing store for {@link InMemoryJobRepository} and {@link InMemoryJobExplorer}.
  * <p>
- * You should create a single {@link InMemoryJobRepository} and {@link InMemoryJobExplorer}
+ * You should create a {@link InMemoryJobRepository} and {@link InMemoryJobExplorer}
  * that share the same {@link InMemoryJobRepository}.
  * <p>
  * Instances of this class are thread-safe.
@@ -291,11 +291,15 @@ public final class InMemoryJobStorage {
       }
       Set<JobExecution> runningJobExecutions = new HashSet<>();
       for (JobInstanceAndParameters jobInstanceAndParameters : jobInstancesAndParameters) {
-        List<Long> jobExecutionIds = this.getExecutionIds(jobInstanceAndParameters.getJobInstance());
-        for (Long jobExecutionId : jobExecutionIds) {
-          JobExecution jobExecution = this.jobExecutionsById.get(jobExecutionId);
-          if (jobExecution.isRunning()) {
-            runningJobExecutions.add(copyJobExecution(jobExecution));
+        JobExecutions jobExecutions = this.getJobExecutionsUnlocked(jobInstanceAndParameters.getJobInstance());
+        if (jobExecutions != null) {
+          // running is a blocking status, therefore we can limit the number of job executions we check
+          Set<Long> jobExecutionIds = jobExecutions.getBlockingJobExecutionIds();
+          for (Long jobExecutionId : jobExecutionIds) {
+            JobExecution jobExecution = this.jobExecutionsById.get(jobExecutionId);
+            if (jobExecution.isRunning()) {
+              runningJobExecutions.add(copyJobExecution(jobExecution));
+            }
           }
         }
       }
@@ -445,8 +449,7 @@ public final class InMemoryJobStorage {
         return jobInstances.get(0).getJobInstance();
       } else {
         // the last one should have the highest id
-        JobInstance jobInstanceWithHighestId = jobInstances.get(jobInstances.size() - 1).getJobInstance();
-        return jobInstanceWithHighestId;
+        return jobInstances.get(jobInstances.size() - 1).getJobInstance();
       }
     } finally {
       readLock.unlock();
@@ -967,6 +970,10 @@ public final class InMemoryJobStorage {
     JobExecutions() {
       this.blockingJobExecutionIds = new HashSet<>();
       this.jobExecutionIds = new ArrayList<>();
+    }
+
+    Set<Long> getBlockingJobExecutionIds() {
+      return this.blockingJobExecutionIds;
     }
 
     void addBlockingJobExecutionId(Long jobExecutionId) {
