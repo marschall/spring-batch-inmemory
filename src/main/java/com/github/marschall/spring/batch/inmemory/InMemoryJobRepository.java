@@ -3,7 +3,6 @@ package com.github.marschall.spring.batch.inmemory;
 import java.lang.invoke.MethodHandles;
 import java.util.Collection;
 import java.util.Date;
-import java.util.List;
 import java.util.Objects;
 
 import org.apache.commons.logging.Log;
