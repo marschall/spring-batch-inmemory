@@ -43,7 +43,7 @@ import org.springframework.lang.Nullable;
  * Instances of this class are thread-safe.
  */
 public final class InMemoryJobStorage {
-  
+
   /**
    * Since creating an {@link ExecutionContext} is quite heavy as it involves creating a new
    * {@link ConcurrentHashMap} we use this as a sentinel for an empty execution context.
@@ -214,7 +214,7 @@ public final class InMemoryJobStorage {
       return null;
     }
   }
-  
+
   void setStepExecutionContext(StepExecution stepExecution) {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
@@ -640,7 +640,7 @@ public final class InMemoryJobStorage {
     }
   }
 
-  void addStepExecutions(JobExecution jobExecution) {
+  void loadStepExecutions(JobExecution jobExecution) {
     Long jobExecutionId = jobExecution.getId();
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
@@ -653,7 +653,8 @@ public final class InMemoryJobStorage {
       stepExecutions.sort(Comparator.comparing(StepExecution::getId));
       for (int i = 0; i < stepExecutions.size(); i++) {
         StepExecution stepExecution = stepExecutions.get(i);
-        copyStepExecution(stepExecution, jobExecution);
+        // adds the new StepExecution to the JobExecution
+        copyStepExecutionForReading(stepExecution, jobExecution);
       }
     } finally {
       readLock.unlock();
@@ -685,7 +686,7 @@ public final class InMemoryJobStorage {
       readLock.unlock();
     }
     if (stepExecution != null) {
-      return copyStepExecution(stepExecution, jobExecution);
+      return copyStepExecutionForReading(stepExecution, jobExecution);
     } else {
       return null;
     }
@@ -709,7 +710,7 @@ public final class InMemoryJobStorage {
       readLock.unlock();
     }
     if (latestStepExecution != null) {
-      return copyStepExecution(latestStepExecution, copyJobExecution(latestJobExecution));
+      return copyStepExecutionForReading(latestStepExecution, copyJobExecution(latestJobExecution));
     } else {
       return null;
     }
@@ -732,9 +733,7 @@ public final class InMemoryJobStorage {
       stepExecution.setId(stepExecutionId);
       stepExecution.incrementVersion();
 
-      // copy the job execution to avoid adding the copy of the step execution
-      // FIXME avoid job execution copy, use different constructor
-      StepExecution stepExecutionCopy = copyStepExecution(stepExecution, copyJobExecution(jobExecution));
+      StepExecution stepExecutionCopy = copyStepExecutionForStorage(stepExecution, jobExecution);
       stepExecutions.put(stepExecutionId, stepExecutionCopy);
 
       this.storeStepExecutionContextUnlocked(stepExecution);
@@ -773,10 +772,7 @@ public final class InMemoryJobStorage {
 
       stepExecution.incrementVersion();
 
-
-      // copy the job execution to avoid adding the copy of the step execution
-      // FIXME avoid job execution copy, use different constructor
-      StepExecution stepExecutionCopy = copyStepExecution(stepExecution, copyJobExecution(stepExecution.getJobExecution()));
+      StepExecution stepExecutionCopy = copyStepExecutionForStorage(stepExecution, stepExecution.getJobExecution());
       setpExecutions.put(stepExecutionId, stepExecutionCopy);
     } finally {
       writeLock.unlock();
@@ -832,8 +828,22 @@ public final class InMemoryJobStorage {
     return copy;
   }
 
-  private static StepExecution copyStepExecution(StepExecution original, JobExecution jobExecution) {
+  // does not add the StepExecution to the JobExecution
+  private static StepExecution copyStepExecutionForStorage(StepExecution original, JobExecution jobExecution) {
+    StepExecution copy = new StepExecution(original.getStepName(), jobExecution);
+    copy.setId(original.getId());
+    copyStepProperties(original, copy);
+    return copy;
+  }
+
+  // adds the StepExecution to the JobExecution
+  private static StepExecution copyStepExecutionForReading(StepExecution original, JobExecution jobExecution) {
     StepExecution copy = new StepExecution(original.getStepName(), jobExecution, original.getId());
+    copyStepProperties(original, copy);
+    return copy;
+  }
+
+  private static void copyStepProperties(StepExecution original, StepExecution copy) {
     copy.setVersion(original.getVersion());
     copy.setStatus(original.getStatus());
 
@@ -855,8 +865,6 @@ public final class InMemoryJobStorage {
       copy.setTerminateOnly();
     }
     copy.setFilterCount(original.getFilterCount());
-
-    return copy;
   }
 
   private void updateBlockingStatusUnlocked(JobExecution jobExecution) {
