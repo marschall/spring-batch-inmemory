@@ -108,7 +108,7 @@ public final class InMemoryJobExplorer implements JobExplorer {
       return null;
     }
     this.setJobExecutionDependencies(jobExecution);
-    StepExecution stepExecution = this.storage.getStepExecution(jobExecutionId, stepExecutionId);
+    StepExecution stepExecution = this.storage.getStepExecution(jobExecution, stepExecutionId);
     if (stepExecution == null) {
       return null;
     }
@@ -151,8 +151,7 @@ public final class InMemoryJobExplorer implements JobExplorer {
    * requires JobParameters) plus StepExecutions
    */
   private void setJobExecutionDependencies(JobExecution jobExecution) {
-    List<StepExecution> stepExecutions = this.storage.getStepExecutions(jobExecution);
-    jobExecution.addStepExecutions(stepExecutions);
+    this.storage.addStepExecutions(jobExecution);
     this.storage.setJobExecutionContext(jobExecution);
   }
 

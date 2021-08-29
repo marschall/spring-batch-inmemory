@@ -146,8 +146,7 @@ public final class InMemoryJobRepository implements JobRepository {
 
     if (jobExecution != null) {
       this.storage.setJobExecutionContext(jobExecution);
-      List<StepExecution> stepExecutions = this.storage.getStepExecutions(jobExecution);
-      jobExecution.addStepExecutions(stepExecutions);
+      this.storage.addStepExecutions(jobExecution);
     }
     return jobExecution;
   }

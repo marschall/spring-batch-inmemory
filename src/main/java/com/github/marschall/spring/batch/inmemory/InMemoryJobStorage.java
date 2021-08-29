@@ -640,24 +640,21 @@ public final class InMemoryJobStorage {
     }
   }
 
-  List<StepExecution> getStepExecutions(JobExecution jobExecution) {
+  void addStepExecutions(JobExecution jobExecution) {
     Long jobExecutionId = jobExecution.getId();
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       Map<Long, StepExecution> executions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
       if ((executions == null) || executions.isEmpty()) {
-        return List.of();
+        return;
       }
       List<StepExecution> stepExecutions = new ArrayList<>(executions.values());
       stepExecutions.sort(Comparator.comparing(StepExecution::getId));
       for (int i = 0; i < stepExecutions.size(); i++) {
         StepExecution stepExecution = stepExecutions.get(i);
-        // FIXME avoid job execution copy
-        // FIXME StepExecution constructor already adds to JobExecution
-        stepExecutions.set(i, copyStepExecution(stepExecution));
+        copyStepExecution(stepExecution, jobExecution);
       }
-      return stepExecutions;
     } finally {
       readLock.unlock();
     }
@@ -674,12 +671,12 @@ public final class InMemoryJobStorage {
     }
   }
 
-  StepExecution getStepExecution(Long jobExecutionId, Long stepExecutionId) {
+  StepExecution getStepExecution(JobExecution jobExecution, Long stepExecutionId) {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     StepExecution stepExecution;
     try {
-      Map<Long, StepExecution> stepExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
+      Map<Long, StepExecution> stepExecutions = this.stepExecutionsByJobExecutionId.get(jobExecution.getId());
       if (stepExecutions == null) {
         return null;
       }
@@ -688,14 +685,15 @@ public final class InMemoryJobStorage {
       readLock.unlock();
     }
     if (stepExecution != null) {
-      return copyStepExecution(stepExecution);
+      return copyStepExecution(stepExecution, jobExecution);
     } else {
       return null;
     }
   }
 
   StepExecution getLastStepExecution(JobInstance jobInstance, String stepName) {
-    StepExecution latest = null;
+    StepExecution latestStepExecution = null;
+    JobExecution latestJobExecution = null;
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
@@ -705,12 +703,13 @@ public final class InMemoryJobStorage {
       }
       Long lastJobExecutionId = statistics.getLastJobExecutionId();
       Long lastStepExecutionId = statistics.getLastStepExecutionId();
-      latest = this.stepExecutionsByJobExecutionId.get(lastJobExecutionId).get(lastStepExecutionId);
+      latestJobExecution = this.jobExecutionsById.get(lastJobExecutionId);
+      latestStepExecution = this.stepExecutionsByJobExecutionId.get(lastJobExecutionId).get(lastStepExecutionId);
     } finally {
       readLock.unlock();
     }
-    if (latest != null) {
-      return copyStepExecution(latest);
+    if (latestStepExecution != null) {
+      return copyStepExecution(latestStepExecution, copyJobExecution(latestJobExecution));
     } else {
       return null;
     }
@@ -727,12 +726,15 @@ public final class InMemoryJobStorage {
         this.stepExecutionsByJobExecutionId.put(jobExecutionId, stepExecutions);
       }
 
-      Long jobInstanceId = stepExecution.getJobExecution().getJobInstance().getId();
+      JobExecution jobExecution = stepExecution.getJobExecution();
+      Long jobInstanceId = jobExecution.getJobInstance().getId();
       Long stepExecutionId = this.nextStepExecutionId++;
       stepExecution.setId(stepExecutionId);
       stepExecution.incrementVersion();
 
-      StepExecution stepExecutionCopy = copyStepExecution(stepExecution);
+      // copy the job execution to avoid adding the copy of the step execution
+      // FIXME avoid job execution copy, use different constructor
+      StepExecution stepExecutionCopy = copyStepExecution(stepExecution, copyJobExecution(jobExecution));
       stepExecutions.put(stepExecutionId, stepExecutionCopy);
 
       this.storeStepExecutionContextUnlocked(stepExecution);
@@ -771,7 +773,10 @@ public final class InMemoryJobStorage {
 
       stepExecution.incrementVersion();
 
-      StepExecution stepExecutionCopy = copyStepExecution(stepExecution);
+
+      // copy the job execution to avoid adding the copy of the step execution
+      // FIXME avoid job execution copy, use different constructor
+      StepExecution stepExecutionCopy = copyStepExecution(stepExecution, copyJobExecution(stepExecution.getJobExecution()));
       setpExecutions.put(stepExecutionId, stepExecutionCopy);
     } finally {
       writeLock.unlock();
@@ -811,7 +816,6 @@ public final class InMemoryJobStorage {
   }
 
   private static JobExecution copyJobExecution(JobExecution original) {
-//    JobExecution copy = new JobExecution(original);
     JobExecution copy = new JobExecution(original.getJobInstance(), original.getId(), original.getJobParameters(), original.getJobConfigurationName());
     copy.setVersion(original.getVersion());
     copy.setStatus(original.getStatus());
@@ -828,8 +832,8 @@ public final class InMemoryJobStorage {
     return copy;
   }
 
-  private static StepExecution copyStepExecution(StepExecution original) {
-    StepExecution copy = new StepExecution(original.getStepName(), copyJobExecution(original.getJobExecution()), original.getId());
+  private static StepExecution copyStepExecution(StepExecution original, JobExecution jobExecution) {
+    StepExecution copy = new StepExecution(original.getStepName(), jobExecution, original.getId());
     copy.setVersion(original.getVersion());
     copy.setStatus(original.getStatus());
 
