@@ -769,7 +769,7 @@ public final class InMemoryJobStorage {
     copy.setEndTime(original.getEndTime());
     copy.setLastUpdated(original.getLastUpdated());
     copy.setExitStatus(original.getExitStatus());
-    for (Throwable failureException : original.getAllFailureExceptions()) {
+    for (Throwable failureException : original.getFailureExceptions()) {
       copy.addFailureException(failureException);
     }
     // do not set the exeuction context
