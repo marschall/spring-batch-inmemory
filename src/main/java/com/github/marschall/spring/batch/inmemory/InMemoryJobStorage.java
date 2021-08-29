@@ -934,7 +934,9 @@ public final class InMemoryJobStorage {
 
     @Override
     public int hashCode() {
-      return Objects.hash(this.jobInstanceId, this.stepName);
+      int result = Long.hashCode(this.jobInstanceId);
+      result = (31 * result) + this.stepName.hashCode();
+      return result;
     }
 
     @Override
