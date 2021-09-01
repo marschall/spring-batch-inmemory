@@ -114,6 +114,6 @@ Implementation Notes
 --------------------
 
 - As this is intended for testing purposes the implementation is based on `HashMap`s rather than `ConcurrentHashMap` in order to save memory. Thread safety is instead provided through a `ReadWriteLock`.
-- There is no transaction isolation so the behavior is similar to `read uncommitted`.
+- The `JobRepository` and `JobExplorer` implementations offer consistent views for single method calls.
 - Copying of contexts (`ExecutionContext`, `JobExecution` and `StepExecution`) is implemented through copy constructors instead of serialization and deserialization which should result in small efficiency gains.
 

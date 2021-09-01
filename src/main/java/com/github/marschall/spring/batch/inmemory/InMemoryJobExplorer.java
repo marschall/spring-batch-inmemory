@@ -1,6 +1,5 @@
 package com.github.marschall.spring.batch.inmemory;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -74,19 +73,13 @@ public final class InMemoryJobExplorer implements JobExplorer {
     if (executionId == null) {
       return null;
     }
-    JobExecution jobExecution = this.storage.getJobExecution(executionId);
-    if (jobExecution != null) {
-      this.hidrateJobExecution(jobExecution);
-    }
-    return jobExecution;
+    return this.storage.getJobExecution(executionId);
   }
 
   @Override
   public JobExecution getLastJobExecution(JobInstance jobInstance) {
     Objects.requireNonNull(jobInstance, "jobInstance");
-    JobExecution jobExecution = this.storage.getLastJobExecution(jobInstance);
-    this.hidrateJobExecution(jobExecution);
-    return jobExecution;
+    return this.storage.getLastJobExecution(jobInstance);
   }
 
   @Nullable
@@ -103,24 +96,12 @@ public final class InMemoryJobExplorer implements JobExplorer {
       return null;
     }
 
-    JobExecution jobExecution = this.storage.getJobExecution(jobExecutionId);
-    if (jobExecution == null) {
-      return null;
-    }
-    this.setJobExecutionDependencies(jobExecution);
-    StepExecution stepExecution = this.storage.getStepExecution(jobExecution, stepExecutionId);
-    if (stepExecution == null) {
-      return null;
-    }
-    this.setStepExecutionDependencies(stepExecution);
-    return stepExecution;
+    return this.storage.getStepExecution(jobExecutionId, stepExecutionId);
   }
 
   @Override
   public List<JobExecution> getJobExecutions(JobInstance jobInstance) {
-    List<JobExecution> executions = this.storage.findJobExecutions(jobInstance);
-    this.hidrateJobExecutions(executions);
-    return executions;
+    return this.storage.findJobExecutions(jobInstance);
   }
 
   @Override
@@ -128,9 +109,7 @@ public final class InMemoryJobExplorer implements JobExplorer {
     if (jobName == null) {
       return Set.of();
     }
-    Set<JobExecution> runningJobExecutions = this.storage.findRunningJobExecutions(jobName);
-    this.hidrateJobExecutions(runningJobExecutions);
-    return runningJobExecutions;
+    return this.storage.findRunningJobExecutions(jobName);
   }
 
   @Override
@@ -144,32 +123,6 @@ public final class InMemoryJobExplorer implements JobExplorer {
       throw new NoSuchJobException("No job instances for job name null were found");
     }
     return this.storage.getJobInstanceCount(jobName);
-  }
-
-  /*
-   * Find all dependencies for a JobExecution, including JobInstance (which
-   * requires JobParameters) plus StepExecutions
-   */
-  private void setJobExecutionDependencies(JobExecution jobExecution) {
-    this.storage.loadStepExecutions(jobExecution);
-    this.storage.setJobExecutionContext(jobExecution);
-  }
-
-  private void setStepExecutionDependencies(StepExecution stepExecution) {
-    this.storage.setStepExecutionContext(stepExecution);
-  }
-
-  private void hidrateJobExecutions(Collection<JobExecution> jobExecutions) {
-    for (JobExecution jobExecution : jobExecutions) {
-      this.hidrateJobExecution(jobExecution);
-    }
-  }
-
-  private void hidrateJobExecution(JobExecution jobExecution) {
-    this.setJobExecutionDependencies(jobExecution);
-    for (StepExecution stepExecution : jobExecution.getStepExecutions()) {
-      this.setStepExecutionDependencies(stepExecution);
-    }
   }
 
 }

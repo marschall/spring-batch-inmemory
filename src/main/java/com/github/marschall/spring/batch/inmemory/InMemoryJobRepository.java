@@ -89,9 +89,12 @@ public final class InMemoryJobRepository implements JobRepository {
 
   @Override
   public void addAll(Collection<StepExecution> stepExecutions) {
+    Date lastUpdated = new Date();
     for (StepExecution stepExecution : stepExecutions) { // implicit null check
-      this.add(stepExecution);
+      validateStepExecution(stepExecution);
+      stepExecution.setLastUpdated(lastUpdated);
     }
+    this.storage.addStepExecutions(stepExecutions);
   }
 
   @Override
@@ -119,14 +122,7 @@ public final class InMemoryJobRepository implements JobRepository {
   @Nullable
   @Override
   public StepExecution getLastStepExecution(JobInstance jobInstance, String stepName) {
-    StepExecution lastExecution = this.storage.getLastStepExecution(jobInstance, stepName);
-
-    if (lastExecution != null) {
-      this.storage.setStepExecutionContext(lastExecution);
-      this.storage.setJobExecutionContext(lastExecution.getJobExecution());
-    }
-
-    return lastExecution;
+    return this.storage.getLastStepExecution(jobInstance, stepName);
   }
 
   @Override
@@ -137,17 +133,7 @@ public final class InMemoryJobRepository implements JobRepository {
   @Nullable
   @Override
   public JobExecution getLastJobExecution(String jobName, JobParameters jobParameters) {
-    JobInstance jobInstance = this.storage.getJobInstance(jobName, jobParameters);
-    if (jobInstance == null) {
-      return null;
-    }
-    JobExecution jobExecution = this.storage.getLastJobExecution(jobInstance);
-
-    if (jobExecution != null) {
-      this.storage.setJobExecutionContext(jobExecution);
-      this.storage.loadStepExecutions(jobExecution);
-    }
-    return jobExecution;
+    return this.storage.getLastJobExecution(jobName, jobParameters);
   }
 
   /**
