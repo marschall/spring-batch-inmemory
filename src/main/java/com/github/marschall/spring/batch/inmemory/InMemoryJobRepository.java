@@ -92,6 +92,7 @@ public final class InMemoryJobRepository implements JobRepository {
     Date lastUpdated = new Date();
     for (StepExecution stepExecution : stepExecutions) { // implicit null check
       validateStepExecution(stepExecution);
+      // TODO only check job execution once
       stepExecution.setLastUpdated(lastUpdated);
     }
     this.storage.addStepExecutions(stepExecutions);

@@ -98,6 +98,7 @@ public final class NullJobRepository implements JobRepository {
   @Override
   public void addAll(Collection<StepExecution> stepExecutions) {
     for (StepExecution stepExecution : stepExecutions) { // implicit null check
+      // TODO only check job execution once
       this.add(stepExecution);
     }
   }
