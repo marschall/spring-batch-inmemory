@@ -1,4 +1,4 @@
-package com.github.marschall.spring.batch.inmemory;
+package com.github.marschall.spring.batch.nulldatasource;
 
 import java.io.InputStream;
 import java.io.Reader;

@@ -1,4 +1,4 @@
-package com.github.marschall.spring.batch.inmemory;
+package com.github.marschall.spring.batch.nulldatasource;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;

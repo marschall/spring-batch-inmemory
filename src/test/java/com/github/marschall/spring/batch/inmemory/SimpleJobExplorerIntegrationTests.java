@@ -33,6 +33,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import com.github.marschall.spring.batch.nulldatasource.NullDataSource;
+
 /**
  * Integration test for the BATCH-2034 issue.
  * The {@link FlowStep} execution should not fail in the remote partitioning use case because the {@link SimpleJobExplorer}

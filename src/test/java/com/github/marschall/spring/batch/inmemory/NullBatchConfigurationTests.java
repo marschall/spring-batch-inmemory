@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
 import com.github.marschall.spring.batch.inmemory.configuration.LoggingJobConfiguration;
+import com.github.marschall.spring.batch.nulldatasource.NullDataSource;
 
 class NullBatchConfigurationTests extends AbstractLoggingTests {
 

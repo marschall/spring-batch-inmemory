@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import com.github.marschall.spring.batch.inmemory.configuration.LoggingJobConfiguration;
+import com.github.marschall.spring.batch.nulldatasource.NullDataSource;
 
 class NullBatchConfigurerTests extends AbstractLoggingTests {
 
