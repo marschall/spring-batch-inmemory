@@ -1,14 +1,14 @@
 Spring Batch In-Memory
 ======================
 
-Alternative implementations of the Spring Batch `JobRepository` and `JobExplorer` interfaces as the map based DAO implementations (`MapJobInstanceDao`, `MapJobExecutionDao`, `MapStepExecutionDao` and `MapExecutionContextDao`) are deprecated.
+Alternative implementations of the Spring Batch `JobRepository` and `JobExplorer` interfaces that don't require committing JDBC transactions. This allows you to roll back all DML operations in integration tests.
 
 We offer two different implementations:
 
-- In memory implementations that save all data in memory. These require cleanup.
-- Null implementations that do not save any data and therefore do not require any cleanup.
+- Null implementations that do not save any data and therefore do not require any cleanup. This is ideal for integration tests where you don't want to have to clean up previous job executions.
+- In memory implementations that save all data in memory. These are intended as replacements for the deprecated the map based DAO implementations (`MapJobInstanceDao`, `MapJobExecutionDao`, `MapStepExecutionDao` and `MapExecutionContextDao`). These require clean up of previous job executions.
 
-This project allows to run Spring Batch integration tests either without a JDBC `DataSource` or with rolling back all DML operations.
+We also offer a `NullDataSource` that allows running integration tests without a database at all.
 
 ```xml
 <dependency>
@@ -18,10 +18,12 @@ This project allows to run Spring Batch integration tests either without a JDBC 
 </dependency>
 ```
 
-There are two ways this project can be used, either through `SimpleBatchConfiguration` and `BatchConfigurer` or through `InMemoryBatchConfiguration`/`NullBatchConfiguration`.
+There are two ways this project can be used, either through `SimpleBatchConfiguration` and `BatchConfigurer` or through `NullBatchConfiguration`/`InMemoryBatchConfiguration`.
 
 SimpleBatchConfiguration and BatchConfigurer
 --------------------------------------------
+
+We offer the `NullBatchConfigurer` and `InMemoryBatchConfigurer` implementations of `BatchConfigurer` that can be used together with `SimpleBatchConfiguration`.
 
 ```java
 @Transactional // only needed of you have JDBC DML operations that you want to rollback
@@ -39,6 +41,7 @@ class MySpringBatchIntegrationTests {
 
     @Bean
     BatchConfigurer batchConfigurer() {
+      // you can also use NullBatchConfigurer here
       return new InMemoryBatchConfigurer(this.txManager());
     }
 
@@ -62,7 +65,7 @@ class MySpringBatchIntegrationTests {
 InMemoryBatchConfiguration
 --------------------------
 
-`InMemoryBatchConfiguration` replaces `SimpleBatchConfiguration` and `BatchConfigurer`.
+In addition we offer `NullBatchConfiguration` and `InMemoryBatchConfiguration` which completley replace `SimpleBatchConfiguration` and `BatchConfigurer`.
 
 
 ```java
@@ -74,7 +77,7 @@ class MySpringBatchIntegrationTests {
   @Configuration
   @Import({
     MyJobConfiguration.class, // the configuration class of the Spring Batch job or step you want to test
-    InMemoryBatchConfiguration.class
+    InMemoryBatchConfiguration.class // or use NullBatchConfiguration
   })
   static class ContextConfiguration {
 
@@ -104,6 +107,8 @@ class MySpringBatchIntegrationTests {
 }
 ```
 
+If you're using `NullBatchConfigurer` or `NullBatchConfiguration` then there is no need for clearing as nothing is stored.
+
 Limitations
 -----------
 
@@ -116,4 +121,4 @@ Implementation Notes
 - As this is intended for testing purposes the implementation is based on `HashMap`s rather than `ConcurrentHashMap` in order to save memory. Thread safety is instead provided through a `ReadWriteLock`.
 - The `JobRepository` and `JobExplorer` implementations offer consistent views for single method calls.
 - Copying of contexts (`ExecutionContext`, `JobExecution` and `StepExecution`) is implemented through copy constructors instead of serialization and deserialization which should result in small efficiency gains.
-
+- Compared to the map based implementations (`MapJobInstanceDao`, `MapJobExecutionDao`, `MapStepExecutionDao` and `MapExecutionContextDao`) you should see reductions if memory footprint as we store each object (`JobExecution`, `StepExecution`, `ExecutionContext`) only once.
