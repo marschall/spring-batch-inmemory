@@ -67,7 +67,6 @@ InMemoryBatchConfiguration
 
 In addition we offer `NullBatchConfiguration` and `InMemoryBatchConfiguration` which completley replace `SimpleBatchConfiguration` and `BatchConfigurer`.
 
-
 ```java
 @Transactional // only needed of you have JDBC DML operations that you want to rollback
 @Rollback // only needed of you have JDBC DML operations that you want to rollback
@@ -121,4 +120,4 @@ Implementation Notes
 - As this is intended for testing purposes the implementation is based on `HashMap`s rather than `ConcurrentHashMap` in order to save memory. Thread safety is instead provided through a `ReadWriteLock`.
 - The `JobRepository` and `JobExplorer` implementations offer consistent views for single method calls.
 - Copying of contexts (`ExecutionContext`, `JobExecution` and `StepExecution`) is implemented through copy constructors instead of serialization and deserialization which should result in small efficiency gains.
-- Compared to the map based implementations (`MapJobInstanceDao`, `MapJobExecutionDao`, `MapStepExecutionDao` and `MapExecutionContextDao`) you should see reductions if memory footprint as we store each object (`JobExecution`, `StepExecution`, `ExecutionContext`) only once.
+- Compared to the map based implementations (`MapJobInstanceDao`, `MapJobExecutionDao`, `MapStepExecutionDao` and `MapExecutionContextDao`) you should see reductions if memory footprint as we store each object (`JobExecution`, `StepExecution`, `ExecutionContext`) only once. This should be especially noticeable if you have a `JobExecution` with many `StepExecutions`.
