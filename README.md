@@ -18,10 +18,20 @@ We also offer a `NullDataSource` that allows running integration tests without a
 </dependency>
 ```
 
+Compared to `MapJobRepositoryFactoryBean`:
+
+- our implemenations allow rolling back transactions in integration tests
+- our implemenations should perform much better in situations of jobs with many steps
+- our `JobRepository` and `JobExplorer` implementations are not deprecated and work with Spring Batch 5
+
+
+Configuration
+-------------
+
 There are two ways this project can be used, either through `SimpleBatchConfiguration` and `BatchConfigurer` or through `NullBatchConfiguration`/`InMemoryBatchConfiguration`.
 
-SimpleBatchConfiguration and BatchConfigurer
---------------------------------------------
+### SimpleBatchConfiguration and BatchConfigurer
+
 
 We offer the `NullBatchConfigurer` and `InMemoryBatchConfigurer` implementations of `BatchConfigurer` that can be used together with `SimpleBatchConfiguration`.
 
@@ -62,8 +72,7 @@ class MySpringBatchIntegrationTests {
 }
 ```
 
-InMemoryBatchConfiguration
---------------------------
+### InMemoryBatchConfiguration and NullBatchConfiguration
 
 In addition we offer `NullBatchConfiguration` and `InMemoryBatchConfiguration` which completley replace `SimpleBatchConfiguration` and `BatchConfigurer`.
 
