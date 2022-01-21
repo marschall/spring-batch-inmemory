@@ -20,27 +20,31 @@ import javax.sql.DataSource;
 public final class NullDataSource implements DataSource {
 
   private volatile int loginTimeout = 0;
+  private volatile PrintWriter logWriter;
 
+  /**
+   * Constructs a new {@link NullDataSource}.
+   */
   public NullDataSource() {
     super();
   }
 
   @Override
   public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-    // TODO Auto-generated method stub
-    return null;
+    return Logger.getLogger("");
   }
 
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    if (iface == DataSource.class) {
+      return iface.cast(this);
+    }
+    throw new SQLException("unsupported interface: " + iface);
   }
 
   @Override
   public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    return iface == DataSource.class;
   }
 
   @Override
@@ -55,14 +59,12 @@ public final class NullDataSource implements DataSource {
 
   @Override
   public PrintWriter getLogWriter() throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    return this.logWriter;
   }
 
   @Override
   public void setLogWriter(PrintWriter out) throws SQLException {
-    // TODO Auto-generated method stub
-
+    this.logWriter = out;
   }
 
   @Override
