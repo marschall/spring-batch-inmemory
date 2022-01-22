@@ -24,11 +24,21 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class NullBatchConfiguration {
 
+  /**
+   * Defines the {@link JobBuilderFactory} bean.
+   * 
+   * @return the {@link JobBuilderFactory} bean.
+   */
   @Bean
   public JobBuilderFactory jobBuilders() {
     return new JobBuilderFactory(this.jobRepository());
   }
 
+  /**
+   * Defines the {@link StepBuilderFactory} bean.
+   * 
+   * @return the {@link StepBuilderFactory} bean.
+   */
   @Bean
   public StepBuilderFactory stepBuilders() {
     // the in-memory job repository and job explorer do not support transactions
@@ -36,11 +46,21 @@ public class NullBatchConfiguration {
     return new StepBuilderFactory(this.jobRepository(), new ResourcelessTransactionManager());
   }
 
+  /**
+   * Defines the {@link NullJobRepository} bean which will be a {@link InMemoryJobRepository}.
+   * 
+   * @return the {@link JobRepository} bean.
+   */
   @Bean
   public JobRepository jobRepository() {
     return new NullJobRepository();
   }
 
+  /**
+   * Defines the {@link JobLauncher} bean.
+   * 
+   * @return the {@link JobLauncher} bean.
+   */
   @Bean
   public JobLauncher jobLauncher() {
     SimpleJobLauncher jobLauncher = new SimpleJobLauncher();
@@ -48,16 +68,31 @@ public class NullBatchConfiguration {
     return jobLauncher;
   }
 
+  /**
+   * Defines the {@link JobRepository} bean which will be a {@link InMemoryJobExplorer}.
+   * 
+   * @return the {@link JobRepository} bean.
+   */
   @Bean
   public JobExplorer jobExplorer() {
     return new NullJobExplorer();
   }
 
+  /**
+   * Defines the {@link JobRegistry} bean.
+   * 
+   * @return the {@link JobRegistry} bean.
+   */
   @Bean
   public JobRegistry jobRegistry() {
     return new MapJobRegistry();
   }
 
+  /**
+   * Defines the {@link StepScope} bean.
+   * 
+   * @return the {@link StepScope} bean.
+   */
   @Bean
   public static StepScope stepScope() {
     StepScope stepScope = new StepScope();
@@ -65,6 +100,11 @@ public class NullBatchConfiguration {
     return stepScope;
   }
 
+  /**
+   * Defines the {@link JobScope} bean.
+   * 
+   * @return the {@link JobScope} bean.
+   */
   @Bean
   public static JobScope jobScope() {
     JobScope jobScope = new JobScope();

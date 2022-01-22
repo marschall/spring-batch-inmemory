@@ -26,20 +26,38 @@ public class InMemoryBatchConfiguration {
 
   private final InMemoryJobStorage storge;
 
+  /**
+   * Constructs a new {@link InMemoryBatchConfiguration}.
+   */
   public InMemoryBatchConfiguration() {
     this.storge = new InMemoryJobStorage();
   }
 
+  /**
+   * Defines the {@link InMemoryJobStorage} bean.
+   * 
+   * @return the {@link InMemoryJobStorage} bean.
+   */
   @Bean
   public InMemoryJobStorage inMemoryJobStorage() {
     return this.storge;
   }
 
+  /**
+   * Defines the {@link JobBuilderFactory} bean.
+   * 
+   * @return the {@link JobBuilderFactory} bean.
+   */
   @Bean
   public JobBuilderFactory jobBuilders() {
     return new JobBuilderFactory(this.jobRepository());
   }
 
+  /**
+   * Defines the {@link StepBuilderFactory} bean.
+   * 
+   * @return the {@link StepBuilderFactory} bean.
+   */
   @Bean
   public StepBuilderFactory stepBuilders() {
     // the in-memory job repository and job explorer do not support transactions
@@ -47,11 +65,21 @@ public class InMemoryBatchConfiguration {
     return new StepBuilderFactory(this.jobRepository(), new ResourcelessTransactionManager());
   }
 
+  /**
+   * Defines the {@link JobRepository} bean which will be a {@link InMemoryJobRepository}.
+   * 
+   * @return the {@link JobRepository} bean.
+   */
   @Bean
   public JobRepository jobRepository() {
     return new InMemoryJobRepository(this.storge);
   }
 
+  /**
+   * Defines the {@link JobLauncher} bean.
+   * 
+   * @return the {@link JobLauncher} bean.
+   */
   @Bean
   public JobLauncher jobLauncher() {
     SimpleJobLauncher jobLauncher = new SimpleJobLauncher();
@@ -59,16 +87,31 @@ public class InMemoryBatchConfiguration {
     return jobLauncher;
   }
 
+  /**
+   * Defines the {@link JobRepository} bean which will be a {@link InMemoryJobExplorer}.
+   * 
+   * @return the {@link JobRepository} bean.
+   */
   @Bean
   public JobExplorer jobExplorer() {
     return new InMemoryJobExplorer(this.storge);
   }
 
+  /**
+   * Defines the {@link JobRegistry} bean.
+   * 
+   * @return the {@link JobRegistry} bean.
+   */
   @Bean
   public JobRegistry jobRegistry() {
     return new MapJobRegistry();
   }
 
+  /**
+   * Defines the {@link StepScope} bean.
+   * 
+   * @return the {@link StepScope} bean.
+   */
   @Bean
   public static StepScope stepScope() {
     StepScope stepScope = new StepScope();
@@ -76,6 +119,11 @@ public class InMemoryBatchConfiguration {
     return stepScope;
   }
 
+  /**
+   * Defines the {@link JobScope} bean.
+   * 
+   * @return the {@link JobScope} bean.
+   */
   @Bean
   public static JobScope jobScope() {
     JobScope jobScope = new JobScope();
