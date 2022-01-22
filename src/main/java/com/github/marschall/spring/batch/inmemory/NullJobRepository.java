@@ -48,18 +48,6 @@ public final class NullJobRepository implements JobRepository {
   }
 
   @Override
-  public JobExecution createJobExecution(JobInstance jobInstance, JobParameters jobParameters, String jobConfigurationLocation) {
-    Objects.requireNonNull(jobInstance, "jobInstance");
-    Objects.requireNonNull(jobParameters, "jobParameters");
-
-    JobExecution jobExecution = new JobExecution(jobInstance, JOB_EXECUTION_ID.incrementAndGet(), jobParameters, jobConfigurationLocation);
-    jobExecution.setLastUpdated(new Date());
-    jobExecution.incrementVersion();
-
-    return jobExecution;
-  }
-
-  @Override
   public JobExecution createJobExecution(String jobName, JobParameters jobParameters) {
 
     Objects.requireNonNull(jobName, "jobName");
@@ -68,7 +56,7 @@ public final class NullJobRepository implements JobRepository {
     JobInstance jobInstance = new JobInstance(JOB_INSTANCE_ID.incrementAndGet(), jobName);
     jobInstance.incrementVersion();
 
-    JobExecution jobExecution = new JobExecution(jobInstance, JOB_EXECUTION_ID.incrementAndGet(), jobParameters, null);
+    JobExecution jobExecution = new JobExecution(jobInstance, JOB_EXECUTION_ID.incrementAndGet(), jobParameters);
     jobExecution.incrementVersion();
     jobExecution.setLastUpdated(new Date());
 

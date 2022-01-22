@@ -135,26 +135,6 @@ public final class InMemoryJobStorage {
     return jobInstance;
   }
 
-  JobExecution createJobExecution(JobInstance jobInstance, JobParameters jobParameters, String jobConfigurationLocation) {
-
-    Lock writeLock = this.instanceLock.writeLock();
-    writeLock.lock();
-    try {
-      Long jobExecutionId = this.nextJobExecutionId++;
-      JobExecution jobExecution = new JobExecution(jobInstance, jobExecutionId, jobParameters, jobConfigurationLocation);
-      jobExecution.setLastUpdated(new Date());
-      jobExecution.incrementVersion();
-
-      this.jobExecutionsById.put(jobExecutionId, copyJobExecution(jobExecution));
-      this.storeJobExecutionContextUnlocked(jobExecution);
-      this.mapJobExecutionUnlocked(jobInstance, jobExecution);
-      return jobExecution;
-    } finally {
-      writeLock.unlock();
-    }
-
-  }
-
   private void mapJobExecutionUnlocked(JobInstance jobInstance, JobExecution jobExecution) {
     JobExecutions jobExecutions = this.jobInstanceToExecutions.computeIfAbsent(jobInstance.getId(), jobInstanceId -> new JobExecutions());
     jobExecutions.addJobExecutionId(jobExecution.getId());
@@ -253,7 +233,7 @@ public final class InMemoryJobStorage {
         // use default empty execution context
       }
 
-      JobExecution jobExecution = new JobExecution(jobInstance, jobParameters, null);
+      JobExecution jobExecution = new JobExecution(jobInstance, jobParameters);
       if (executionContext != null) {
         jobExecution.setExecutionContext(executionContext);
       }
@@ -844,7 +824,7 @@ public final class InMemoryJobStorage {
   }
 
   private static JobExecution copyJobExecution(JobExecution original) {
-    JobExecution copy = new JobExecution(original.getJobInstance(), original.getId(), original.getJobParameters(), original.getJobConfigurationName());
+    JobExecution copy = new JobExecution(original.getJobInstance(), original.getId(), original.getJobParameters());
     copy.setVersion(original.getVersion());
     copy.setStatus(original.getStatus());
     copy.setStartTime(original.getStartTime());

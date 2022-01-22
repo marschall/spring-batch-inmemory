@@ -51,13 +51,6 @@ public final class InMemoryJobRepository implements JobRepository {
   }
 
   @Override
-  public JobExecution createJobExecution(JobInstance jobInstance, JobParameters jobParameters, String jobConfigurationLocation) {
-    Objects.requireNonNull(jobInstance, "jobInstance");
-    Objects.requireNonNull(jobParameters, "jobParameters");
-    return this.storage.createJobExecution(jobInstance, jobParameters, jobConfigurationLocation);
-  }
-
-  @Override
   public JobExecution createJobExecution(String jobName, JobParameters jobParameters)
           throws JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException {
     Objects.requireNonNull(jobName, "jobName");
