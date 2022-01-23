@@ -14,7 +14,7 @@ We also offer a `NullDataSource` that allows running integration tests without a
 <dependency>
   <groupId>com.github.marschall</groupId>
   <artifactId>spring-batch-inmemory</artifactId>
-  <version>0.3.0</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
