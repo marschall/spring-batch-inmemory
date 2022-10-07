@@ -5,25 +5,26 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import javax.sql.DataSource;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.batch.core.ExitStatus;
+import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.support.transaction.ResourcelessTransactionManager;
 import org.springframework.batch.test.JobLauncherTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import com.github.marschall.spring.batch.inmemory.configuration.LoggingJobConfiguration;
-import com.github.marschall.spring.batch.nulldatasource.NullDataSource;
 
 @SpringBatchTest
 @ClearJobRepository(AFTER_TEST)
@@ -32,12 +33,17 @@ class ClearJobRepositoryTests {
 
   @Autowired
   private JobLauncherTestUtils jobLauncherTestUtils;
+  
+  @Autowired
+  private ApplicationContext applicationContext;
 
   private JobParameters jobParameters;
 
   @BeforeEach
   void setUp() {
     this.jobParameters = new JobParameters();
+    Job job = this.applicationContext.getBean("loggingJob", Job.class);
+    this.jobLauncherTestUtils.setJob(job);
   }
 
   private String getJobName() {
@@ -75,8 +81,8 @@ class ClearJobRepositoryTests {
   static class ContextConfiguration {
 
     @Bean
-    public DataSource dataSource() {
-      return new NullDataSource();
+    public PlatformTransactionManager txManager() {
+      return new ResourcelessTransactionManager();
     }
 
   }

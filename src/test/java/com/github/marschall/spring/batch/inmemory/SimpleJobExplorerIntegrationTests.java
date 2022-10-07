@@ -5,18 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.sql.DataSource;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobExecutionException;
+import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.configuration.annotation.BatchConfigurer;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
-import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.explore.support.SimpleJobExplorer;
 import org.springframework.batch.core.job.flow.FlowExecutionStatus;
@@ -26,14 +23,14 @@ import org.springframework.batch.core.job.flow.support.StateTransition;
 import org.springframework.batch.core.job.flow.support.state.EndState;
 import org.springframework.batch.core.job.flow.support.state.StepState;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.support.transaction.ResourcelessTransactionManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.PlatformTransactionManager;
-
-import com.github.marschall.spring.batch.nulldatasource.NullDataSource;
 
 /**
  * Integration test for the BATCH-2034 issue.
@@ -46,15 +43,18 @@ import com.github.marschall.spring.batch.nulldatasource.NullDataSource;
 class SimpleJobExplorerIntegrationTests {
 
   @Configuration
+  @Import(InMemoryBatchConfiguration.class)
   @EnableBatchProcessing
   static class Config {
 
     @Autowired
-    private StepBuilderFactory steps;
+    private JobRepository jobRepository;
 
     @Bean
     Step flowStep() throws Exception {
-      return this.steps.get("flowStep").flow(this.simpleFlow()).build();
+      return new StepBuilder("flowStep", this.jobRepository)
+          .flow(this.simpleFlow())
+          .build();
     }
 
     @Bean
@@ -73,18 +73,8 @@ class SimpleJobExplorerIntegrationTests {
     }
 
     @Bean
-    DataSource dataSource() {
-      return new NullDataSource();
-    }
-
-    @Bean
     PlatformTransactionManager txManager() {
       return new ResourcelessTransactionManager();
-    }
-
-    @Bean
-    BatchConfigurer batchConfigurer() {
-      return new InMemoryBatchConfigurer(this.txManager());
     }
 
   }

@@ -12,11 +12,13 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.ExitStatus;
+import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.test.JobLauncherTestUtils;
 import org.springframework.batch.test.JobRepositoryTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 
 @SpringBatchTest
 abstract class AbstractLoggingTests {
@@ -26,10 +28,15 @@ abstract class AbstractLoggingTests {
 
   @Autowired
   private JobRepositoryTestUtils jobRepositoryTestUtils;
+  
+  @Autowired
+  private ApplicationContext applicationContext;
 
   @Test
   void launchJob() throws Exception {
     long start = System.currentTimeMillis();
+    Job job = this.applicationContext.getBean("loggingJob", Job.class);
+    this.jobLauncherTestUtils.setJob(job);
     JobExecution jobExecution = this.jobLauncherTestUtils.launchJob();
     assertEquals(ExitStatus.COMPLETED, jobExecution.getExitStatus());
     long end = System.currentTimeMillis();

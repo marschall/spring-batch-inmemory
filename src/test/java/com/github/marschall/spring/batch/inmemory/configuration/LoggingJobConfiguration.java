@@ -6,15 +6,17 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.core.step.tasklet.CallableTaskletAdapter;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * Configures a single job with three steps that just log.
@@ -23,16 +25,16 @@ import org.springframework.context.annotation.Configuration;
 public class LoggingJobConfiguration {
 
   private static final Log LOGGER = LogFactory.getLog(MethodHandles.lookup().lookupClass());
-
+  
   @Autowired
-  public JobBuilderFactory jobBuilderFactory;
-
+  public JobRepository jobRepository;
+  
   @Autowired
-  public StepBuilderFactory stepBuilderFactory;
+  public PlatformTransactionManager txManager;
 
   @Bean
   public Job loggingJob() {
-    return this.jobBuilderFactory.get("loggingJob")
+    return new JobBuilder("loggingJob", this.jobRepository)
       .incrementer(new RunIdIncrementer())
       .start(this.step1())
       .next(this.step2())
@@ -42,22 +44,22 @@ public class LoggingJobConfiguration {
 
   @Bean
   public Step step1() {
-    return this.stepBuilderFactory.get("step1")
-      .tasklet(this.loggingTasklet("step1"))
+    return new StepBuilder("step1", this.jobRepository)
+      .tasklet(this.loggingTasklet("step1"), this.txManager)
       .build();
   }
 
   @Bean
   public Step step2() {
-    return this.stepBuilderFactory.get("step2")
-            .tasklet(this.loggingTasklet("step2"))
+    return new StepBuilder("step2", this.jobRepository)
+            .tasklet(this.loggingTasklet("step2"), this.txManager)
             .build();
   }
 
   @Bean
   public Step step3() {
-    return this.stepBuilderFactory.get("step3")
-            .tasklet(this.loggingTasklet("step3"))
+    return new StepBuilder("step3", this.jobRepository)
+            .tasklet(this.loggingTasklet("step3"), this.txManager)
             .build();
   }
 

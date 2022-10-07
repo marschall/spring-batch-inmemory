@@ -212,12 +212,6 @@ class NullDataSourceTests {
     }
   }
 
-  @Test
-  void removeJobExecutions() {
-    JobRepositoryTestUtils testUtils = new JobRepositoryTestUtils();
-    testUtils.removeJobExecutions();
-  }
-
   private static DataSource h2DataSource() {
     return new EmbeddedDatabaseBuilder()
         .generateUniqueName(true)

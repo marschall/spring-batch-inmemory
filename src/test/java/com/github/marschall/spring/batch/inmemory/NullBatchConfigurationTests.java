@@ -1,13 +1,12 @@
 package com.github.marschall.spring.batch.inmemory;
 
-import javax.sql.DataSource;
-
+import org.springframework.batch.support.transaction.ResourcelessTransactionManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import com.github.marschall.spring.batch.inmemory.configuration.LoggingJobConfiguration;
-import com.github.marschall.spring.batch.nulldatasource.NullDataSource;
 
 class NullBatchConfigurationTests extends AbstractLoggingTests {
 
@@ -19,8 +18,8 @@ class NullBatchConfigurationTests extends AbstractLoggingTests {
   static class ContextConfiguration {
 
     @Bean
-    public DataSource dataSource() {
-      return new NullDataSource();
+    public PlatformTransactionManager txManager() {
+      return new ResourcelessTransactionManager();
     }
 
   }

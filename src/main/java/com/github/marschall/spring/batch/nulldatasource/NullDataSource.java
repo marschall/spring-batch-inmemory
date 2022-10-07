@@ -16,7 +16,9 @@ import javax.sql.DataSource;
  * this is a work around for <a href="https://github.com/spring-projects/spring-batch/issues/3767">#3767</a>.
  * <p>
  * Instances of this class are thread safe but created objects are not.
+ * @deprecated No longer needed as of Spring Batch 5 as JobRepositoryTestUtils no longer requires a {@link DataSource}
  */
+@Deprecated
 public final class NullDataSource implements DataSource {
 
   private volatile int loginTimeout = 0;
