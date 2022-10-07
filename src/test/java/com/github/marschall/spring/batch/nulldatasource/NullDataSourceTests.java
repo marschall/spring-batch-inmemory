@@ -168,7 +168,7 @@ class NullDataSourceTests {
       assertArrayEquals(new long[] {0L}, preparedStatement.executeLargeBatch());
     }
   }
-  
+
   @ParameterizedTest
   @MethodSource("dataSources")
   void nullStatementUpdate(DataSource dataSource) throws SQLException {
@@ -195,7 +195,7 @@ class NullDataSourceTests {
       assertEquals(ResultSet.TYPE_FORWARD_ONLY, resultSet.getType());
       assertEquals(ResultSet.CONCUR_READ_ONLY, resultSet.getConcurrency());
       assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, resultSet.getHoldability());
-      assertTrue(resultSet.getFetchSize() == preparedStatement.getFetchSize() || resultSet.getFetchSize() == 0);
+      assertTrue((resultSet.getFetchSize() == preparedStatement.getFetchSize()) || (resultSet.getFetchSize() == 0));
       assertEquals(ResultSet.FETCH_FORWARD, resultSet.getFetchDirection());
 
       assertFalse(resultSet.isBeforeFirst());
@@ -215,7 +215,6 @@ class NullDataSourceTests {
   @Test
   void removeJobExecutions() {
     JobRepositoryTestUtils testUtils = new JobRepositoryTestUtils();
-    testUtils.setDataSource(new NullDataSource());
     testUtils.removeJobExecutions();
   }
 

@@ -8,11 +8,10 @@ import org.springframework.batch.core.configuration.annotation.StepBuilderFactor
 import org.springframework.batch.core.configuration.support.MapJobRegistry;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.batch.core.launch.support.SimpleJobLauncher;
+import org.springframework.batch.core.launch.support.TaskExecutorJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.scope.JobScope;
 import org.springframework.batch.core.scope.StepScope;
-import org.springframework.batch.support.transaction.ResourcelessTransactionManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -26,7 +25,7 @@ public class NullBatchConfiguration {
 
   /**
    * Defines the {@link JobBuilderFactory} bean.
-   * 
+   *
    * @return the {@link JobBuilderFactory} bean.
    */
   @Bean
@@ -36,19 +35,17 @@ public class NullBatchConfiguration {
 
   /**
    * Defines the {@link StepBuilderFactory} bean.
-   * 
+   *
    * @return the {@link StepBuilderFactory} bean.
    */
   @Bean
   public StepBuilderFactory stepBuilders() {
-    // the in-memory job repository and job explorer do not support transactions
-    // avoid the additional transaction by Spring Batch
-    return new StepBuilderFactory(this.jobRepository(), new ResourcelessTransactionManager());
+    return new StepBuilderFactory(this.jobRepository());
   }
 
   /**
    * Defines the {@link NullJobRepository} bean which will be a {@link InMemoryJobRepository}.
-   * 
+   *
    * @return the {@link JobRepository} bean.
    */
   @Bean
@@ -58,19 +55,19 @@ public class NullBatchConfiguration {
 
   /**
    * Defines the {@link JobLauncher} bean.
-   * 
+   *
    * @return the {@link JobLauncher} bean.
    */
   @Bean
   public JobLauncher jobLauncher() {
-    SimpleJobLauncher jobLauncher = new SimpleJobLauncher();
+    TaskExecutorJobLauncher jobLauncher = new TaskExecutorJobLauncher();
     jobLauncher.setJobRepository(this.jobRepository());
     return jobLauncher;
   }
 
   /**
    * Defines the {@link JobRepository} bean which will be a {@link InMemoryJobExplorer}.
-   * 
+   *
    * @return the {@link JobRepository} bean.
    */
   @Bean
@@ -80,7 +77,7 @@ public class NullBatchConfiguration {
 
   /**
    * Defines the {@link JobRegistry} bean.
-   * 
+   *
    * @return the {@link JobRegistry} bean.
    */
   @Bean
@@ -90,7 +87,7 @@ public class NullBatchConfiguration {
 
   /**
    * Defines the {@link StepScope} bean.
-   * 
+   *
    * @return the {@link StepScope} bean.
    */
   @Bean
@@ -102,7 +99,7 @@ public class NullBatchConfiguration {
 
   /**
    * Defines the {@link JobScope} bean.
-   * 
+   *
    * @return the {@link JobScope} bean.
    */
   @Bean
