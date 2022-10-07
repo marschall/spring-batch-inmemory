@@ -6,9 +6,7 @@ Alternative implementations of the Spring Batch `JobRepository` and `JobExplorer
 We offer two different implementations:
 
 - Null implementations that do not save any data and therefore do not require any cleanup. This is ideal for integration tests where you don't want to have to clean up previous job executions.
-- In memory implementations that save all data in memory. These are intended as replacements for the deprecated the map based DAO implementations (`MapJobInstanceDao`, `MapJobExecutionDao`, `MapStepExecutionDao` and `MapExecutionContextDao`). These require clean up of previous job executions.
-
-We also offer a `NullDataSource` that allows running integration tests without a database at all.
+- In memory implementations that save all data in memory. These are intended as replacements for the Jdbc based DAO implementations (`JdbcJobInstanceDao`, `JdbcJobExecutionDao`, `JdbcStepExecutionDao` and `JdbcExecutionContextDao`). These require clean up of previous job executions.
 
 ```xml
 <dependency>
@@ -20,61 +18,16 @@ We also offer a `NullDataSource` that allows running integration tests without a
 
 Compared to `MapJobRepositoryFactoryBean`:
 
-- our implemenations allow rolling back transactions in integration tests
-- our implemenations should perform much better in situations of jobs with many steps
+- our implementations allow rolling back transactions in integration tests
+- our implementations should perform much better in situations of jobs with many steps
 - our `JobRepository` and `JobExplorer` implementations are not deprecated and work with Spring Batch 5
 
+Versions 1.x of this project support Spring Batch 4.x.
 
 Configuration
 -------------
 
-There are two ways this project can be used, either through `SimpleBatchConfiguration` and `BatchConfigurer` or through `NullBatchConfiguration`/`InMemoryBatchConfiguration`.
-
-### SimpleBatchConfiguration and BatchConfigurer
-
-
-We offer the `NullBatchConfigurer` and `InMemoryBatchConfigurer` implementations of `BatchConfigurer` that can be used together with `SimpleBatchConfiguration`.
-
-```java
-@Transactional // only needed of you have JDBC DML operations that you want to rollback
-@Rollback // only needed of you have JDBC DML operations that you want to rollback
-@SpringBatchTest
-class MySpringBatchIntegrationTests {
-
-  @Configuration
-  @EnableBatchProcessing
-  @Import({
-    MyJobConfiguration.class, // the configuration class of the Spring Batch job or step you want to test
-    SimpleBatchConfiguration.class
-  })
-  static class ContextConfiguration {
-
-    @Bean
-    BatchConfigurer batchConfigurer() {
-      // you can also use NullBatchConfigurer here
-      return new InMemoryBatchConfigurer(this.txManager());
-    }
-
-    @Bean
-    public DataSource dataSource() {
-      // if your job requires data access through JDBC replace this with the actual DataSource
-      return new NullDataSource();
-    }
-
-    @Bean
-    public PlatformTransactionManager txManager() {
-      // if your job requires data access through JDBC replace this with the appropriate transaction manager, eg. DataSourceTransactionManager
-      return new ResourcelessTransactionManager();
-    }
-
-  }
-
-}
-```
-
-### InMemoryBatchConfiguration and NullBatchConfiguration
-
-In addition we offer `NullBatchConfiguration` and `InMemoryBatchConfiguration` which completley replace `SimpleBatchConfiguration` and `BatchConfigurer`.
+We offer two predefined configuration classes (`NullBatchConfiguration` and `InMemoryBatchConfiguration`) for easy setup.
 
 ```java
 @Transactional // only needed of you have JDBC DML operations that you want to rollback
@@ -90,12 +43,11 @@ class MySpringBatchIntegrationTests {
   static class ContextConfiguration {
 
     @Bean
-    public DataSource dataSource() {
-      // if your job requires data access through JDBC replace this with the actual DataSource
-      return new NullDataSource();
+    public PlatformTransactionManager txManager() {
+      // if your job requires data access through JDBC replace this with DataSourceTransactionManager
+      // to roll back JDBC DML operations 
+      return new ResourcelessTransactionManager();
     }
-
-    // if you want to used to roll back JDBC DML operations you also need to define an appropriate transaction manager, eg. DataSourceTransactionManager
 
   }
 
