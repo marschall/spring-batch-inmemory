@@ -127,7 +127,7 @@ public final class InMemoryJobStorage {
       instancesAndParameters = new ArrayList<>();
       this.jobInstancesByName.put(jobName, instancesAndParameters);
     }
-    Map<String, JobParameter> identifyingJoParameters = jobParameters.getParameters().entrySet().stream()
+    Map<String, JobParameter<?>> identifyingJoParameters = jobParameters.getParameters().entrySet().stream()
                                  .filter(entry -> entry.getValue().isIdentifying())
                                  .collect(toMap(Entry::getKey, Entry::getValue));
     instancesAndParameters.add(new JobInstanceAndParameters(jobInstance, identifyingJoParameters));
@@ -282,8 +282,8 @@ public final class InMemoryJobStorage {
     if (jobParameters.isEmpty()) {
       return false;
     }
-    Map<String, JobParameter> parameterMap = jobParameters.getParameters();
-    for (JobParameter jobParameter : parameterMap.values()) {
+    Map<String, JobParameter<?>> parameterMap = jobParameters.getParameters();
+    for (JobParameter<?> jobParameter : parameterMap.values()) {
       if (jobParameter.isIdentifying()) {
         return true;
       }
@@ -305,7 +305,7 @@ public final class InMemoryJobStorage {
       Long lastExecutionId = jobExecutions.getLastJobExecutionId();
       JobExecution lastJobExecution = this.jobExecutionsById.get(lastExecutionId);
       if (lastJobExecution != null) {
-        return copyJobExecutionWithDependencies(lastJobExecution);
+        return this.copyJobExecutionWithDependencies(lastJobExecution);
       } else {
         return null;
       }
@@ -333,7 +333,7 @@ public final class InMemoryJobStorage {
       readLock.unlock();
     }
   }
-  
+
   JobExecution getLastJobExecution(String jobName, JobParameters jobParameters) {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
@@ -365,7 +365,7 @@ public final class InMemoryJobStorage {
           for (Long jobExecutionId : jobExecutionIds) {
             JobExecution jobExecution = this.jobExecutionsById.get(jobExecutionId);
             if (jobExecution.isRunning()) {
-              runningJobExecutions.add(copyJobExecutionWithDependencies(jobExecution));
+              runningJobExecutions.add(this.copyJobExecutionWithDependencies(jobExecution));
             }
           }
         }
@@ -384,7 +384,7 @@ public final class InMemoryJobStorage {
       List<JobExecution> jobExecutions = new ArrayList<>(jobExecutionIds.size());
       for (Long jobExecutionId : jobExecutionIds) {
         JobExecution jobExecution = this.jobExecutionsById.get(jobExecutionId);
-        jobExecutions.add(copyJobExecutionWithDependencies(jobExecution));
+        jobExecutions.add(this.copyJobExecutionWithDependencies(jobExecution));
       }
       jobExecutions.sort(Comparator.comparing(JobExecution::getId));
       return jobExecutions;
@@ -492,7 +492,7 @@ public final class InMemoryJobStorage {
     readLock.lock();
 
     try {
-      return getLastJobInstanceUnlocked(jobName);
+      return this.getLastJobInstanceUnlocked(jobName);
     } finally {
       readLock.unlock();
     }
@@ -517,7 +517,7 @@ public final class InMemoryJobStorage {
     try {
       JobExecution jobExecution = this.jobExecutionsById.get(jobExecutionId);
       if (jobExecution != null) {
-        return copyJobExecutionWithDependencies(jobExecution);
+        return this.copyJobExecutionWithDependencies(jobExecution);
       } else {
         return null;
       }
@@ -657,7 +657,7 @@ public final class InMemoryJobStorage {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {;
-      return getStepExecutionUnlocked(jobExecutionId, stepExecutionId);
+      return this.getStepExecutionUnlocked(jobExecutionId, stepExecutionId);
     } finally {
       readLock.unlock();
     }
@@ -672,7 +672,7 @@ public final class InMemoryJobStorage {
     // only load the job execution context, not all steps
     this.setJobExecutionContextUnlocked(parent);
 
-    
+
     Map<Long, StepExecution> stepExecutions = this.stepExecutionsByJobExecutionId.get(jobExecution.getId());
     if (stepExecutions == null) {
       return null;
@@ -714,18 +714,18 @@ public final class InMemoryJobStorage {
     Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
     try {
-      addStepExecutionUnlocked(stepExecution);
+      this.addStepExecutionUnlocked(stepExecution);
     } finally {
       writeLock.unlock();
     }
   }
-  
+
   void addStepExecutions(Collection<StepExecution> stepExecutions) {
     Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
     try {
       for (StepExecution stepExecution : stepExecutions) {
-        addStepExecutionUnlocked(stepExecution);
+        this.addStepExecutionUnlocked(stepExecution);
       }
     } finally {
       writeLock.unlock();
@@ -734,7 +734,7 @@ public final class InMemoryJobStorage {
 
   private void addStepExecutionUnlocked(StepExecution stepExecution) {
     Long jobExecutionId = stepExecution.getJobExecutionId();
-    
+
     // TODO no need to look up for every step of the name job
     Map<Long, StepExecution> stepExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
     if (stepExecutions == null) {
@@ -1007,9 +1007,9 @@ public final class InMemoryJobStorage {
 
     private final JobInstance jobInstance;
 
-    private final Map<String, JobParameter> identifyingJoParameters;
+    private final Map<String, JobParameter<?>> identifyingJoParameters;
 
-    JobInstanceAndParameters(JobInstance jobInstance, Map<String, JobParameter> identifyingJoParameters) {
+    JobInstanceAndParameters(JobInstance jobInstance, Map<String, JobParameter<?>> identifyingJoParameters) {
       this.jobInstance = jobInstance;
       this.identifyingJoParameters =identifyingJoParameters;
     }
@@ -1019,14 +1019,14 @@ public final class InMemoryJobStorage {
     }
 
     boolean areIdentifyingJoParametersEqualTo(JobParameters otherJobParameters) {
-      Map<String, JobParameter> otherJobParametersMap = otherJobParameters.getParameters();
-      for (Entry<String, JobParameter> identifyingJoParameter : this.identifyingJoParameters.entrySet()) {
+      Map<String, JobParameter<?>> otherJobParametersMap = otherJobParameters.getParameters();
+      for (Entry<String, JobParameter<?>> identifyingJoParameter : this.identifyingJoParameters.entrySet()) {
         if (!identifyingJoParameter.getValue().equals(otherJobParametersMap.get(identifyingJoParameter.getKey()))) {
           return false;
         }
       }
-      for (Entry<String, JobParameter> identifyingJoParameter : otherJobParametersMap.entrySet()) {
-        JobParameter identifyingJoParameterValue = identifyingJoParameter.getValue();
+      for (Entry<String, JobParameter<?>> identifyingJoParameter : otherJobParametersMap.entrySet()) {
+        JobParameter<?> identifyingJoParameterValue = identifyingJoParameter.getValue();
         if (identifyingJoParameterValue.isIdentifying()) {
           if (!identifyingJoParameterValue.equals(this.identifyingJoParameters.get(identifyingJoParameter.getKey()))) {
             return false;
