@@ -1,6 +1,7 @@
 package com.github.marschall.spring.batch.inmemory;
 
 import org.springframework.batch.core.configuration.JobRegistry;
+import org.springframework.batch.core.configuration.support.DefaultBatchConfiguration;
 import org.springframework.batch.core.configuration.support.MapJobRegistry;
 import org.springframework.batch.core.configuration.support.ScopeConfiguration;
 import org.springframework.batch.core.explore.JobExplorer;

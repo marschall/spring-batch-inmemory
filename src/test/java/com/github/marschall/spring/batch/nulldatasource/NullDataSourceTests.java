@@ -22,10 +22,8 @@ import java.util.Map;
 import javax.sql.DataSource;
 
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.batch.test.JobRepositoryTestUtils;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 
 class NullDataSourceTests {
