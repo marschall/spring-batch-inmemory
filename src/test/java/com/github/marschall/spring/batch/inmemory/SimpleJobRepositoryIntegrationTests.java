@@ -53,6 +53,7 @@ class SimpleJobRepositoryIntegrationTests {
 
     JobExecution firstExecution = this.jobRepository.createJobExecution(JOB_NAME, jobParams);
     firstExecution.setStartTime(LocalDateTime.now());
+    firstExecution.setStatus(BatchStatus.COMPLETED);
     assertNotNull(firstExecution.getLastUpdated());
 
     assertEquals(JOB_NAME, firstExecution.getJobInstance().getJobName());
@@ -75,6 +76,7 @@ class SimpleJobRepositoryIntegrationTests {
     JobExecution firstExecution = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters);
     firstExecution.setStartTime(this.ofEpochMillis(0));
     firstExecution.setEndTime(this.ofEpochMillis(1));
+    firstExecution.setStatus(BatchStatus.COMPLETED);
     this.jobRepository.update(firstExecution);
     JobExecution secondExecution = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters);
 
