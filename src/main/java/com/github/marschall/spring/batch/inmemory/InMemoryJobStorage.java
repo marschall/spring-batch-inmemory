@@ -410,7 +410,7 @@ public final class InMemoryJobStorage {
       // copy and pasted from MapJobExecutionDao
       // unclear when synchronized is needed
       synchronized (jobExecution) {
-        if (!persisted.getVersion().equals(jobExecution.getVersion())) {
+        if (persisted.getVersion().intValue() != jobExecution.getVersion().intValue()) {
           throw new OptimisticLockingFailureException("Attempt to update job execution id=" + id
               + " with wrong version (" + jobExecution.getVersion() + "), where current version is "
               + persisted.getVersion());
