@@ -910,15 +910,11 @@ public final class InMemoryJobStorage {
       return true;
     }
 
-    switch (jobExecution.getStatus()) {
-      case UNKNOWN:
-        return true;
-      case COMPLETED:
-      case ABANDONED:
-        return hasIdentifyingParameter(jobExecution);
-      default:
-        return false;
-    }
+    return switch (jobExecution.getStatus()) {
+      case UNKNOWN -> true;
+      case COMPLETED, ABANDONED -> hasIdentifyingParameter(jobExecution);
+      default -> false;
+    };
   }
 
   /**
