@@ -465,6 +465,18 @@ public final class InMemoryJobStorage {
     }
   }
 
+  JobInstance getJobInstance(String jobName, JobParameters jobParameters) {
+    Objects.requireNonNull(jobName, "jobName");
+    Objects.requireNonNull(jobParameters, "jobParameters");
+    Lock readLock = this.instanceLock.readLock();
+    readLock.lock();
+    try {
+      return this.getJobInstanceUnlocked(jobName, jobParameters);
+    } finally {
+      readLock.unlock();
+    }
+  }
+
   private JobInstance getJobInstanceUnlocked(String jobName, JobParameters jobParameters) {
     List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
     if(instancesAndParameters != null) {

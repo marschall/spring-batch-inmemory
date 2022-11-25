@@ -6,6 +6,7 @@ import java.util.Set;
 
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobInstance;
+import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.NoSuchJobException;
@@ -50,6 +51,14 @@ public final class NullJobExplorer implements JobExplorer {
   @Nullable
   @Override
   public JobInstance getJobInstance(Long instanceId) {
+    return null;
+  }
+
+  @Nullable
+  @Override
+  public JobInstance getJobInstance(String jobName, JobParameters jobParameters) {
+    Objects.requireNonNull(jobName, "jobName");
+    Objects.requireNonNull(jobParameters, "jobParameters");
     return null;
   }
 

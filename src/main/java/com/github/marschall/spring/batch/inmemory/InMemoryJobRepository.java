@@ -3,6 +3,7 @@ package com.github.marschall.spring.batch.inmemory;
 import java.lang.invoke.MethodHandles;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 
 import org.apache.commons.logging.Log;
@@ -145,6 +146,44 @@ public final class InMemoryJobRepository implements JobRepository {
       LOGGER.info("Parent JobExecution " + jobExecution.getId() + " is stopped, so passing message on to StepExecution " + stepExecution.getId());
       stepExecution.setTerminateOnly();
     }
+  }
+
+  @Override
+  public List<String> getJobNames() {
+    return this.storage.getJobNames();
+  }
+
+  @Override
+  public List<JobInstance> findJobInstancesByName(String jobName, int start, int count) {
+    return this.storage.findJobInstancesByJobName(jobName, start, count);
+  }
+
+  @Override
+  public List<JobExecution> findJobExecutions(JobInstance jobInstance) {
+    return this.storage.findJobExecutions(jobInstance);
+  }
+
+  @Override
+  public JobInstance getJobInstance(String jobName, JobParameters jobParameters) {
+    return this.storage.getJobInstance(jobName, jobParameters);
+  }
+
+  @Override
+  public void deleteStepExecution(StepExecution stepExecution) {
+    // TODO Auto-generated method stub
+    JobRepository.super.deleteStepExecution(stepExecution);
+  }
+
+  @Override
+  public void deleteJobExecution(JobExecution jobExecution) {
+    // TODO Auto-generated method stub
+    JobRepository.super.deleteJobExecution(jobExecution);
+  }
+
+  @Override
+  public void deleteJobInstance(JobInstance jobInstance) {
+    // TODO Auto-generated method stub
+    JobRepository.super.deleteJobInstance(jobInstance);
   }
 
 }
