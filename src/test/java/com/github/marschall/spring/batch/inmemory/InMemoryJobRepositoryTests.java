@@ -1,6 +1,8 @@
 package com.github.marschall.spring.batch.inmemory;
 
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.junit.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -8,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,9 +63,14 @@ class InMemoryJobRepositoryTests {
     LocalDateTime before = this.jobExecution.getLastUpdated();
     Thread.sleep(2L);
     this.jobRepository.update(this.jobExecution);
-    LocalDateTime after = this.jobExecution.getLastUpdated();
-    assertNotNull(after);
-    assertThat(after, greaterThan(before));
+    LocalDateTime after = LocalDateTime.now();
+
+    LocalDateTime lastUpdated = this.jobExecution.getLastUpdated();
+
+    assertNotNull(lastUpdated);
+    assertThat(lastUpdated, greaterThan(before));
+    // TODO 2sec
+    assertThat(lastUpdated, lessThanOrEqualTo(after));
   }
 
   @Test
@@ -82,13 +88,14 @@ class InMemoryJobRepositoryTests {
     StepExecution stepExecution = new StepExecution("stepName", this.jobExecution);
 
     LocalDateTime before = LocalDateTime.now();
-
     this.jobRepository.add(stepExecution);
-
-    assertNotNull(stepExecution.getLastUpdated());
+    LocalDateTime after = LocalDateTime.now();
 
     LocalDateTime lastUpdated = stepExecution.getLastUpdated();
-    assertThat(Duration.between(before, lastUpdated), greaterThan(Duration.ofSeconds(1L)));
+
+    assertNotNull(lastUpdated);
+    assertThat(lastUpdated, greaterThanOrEqualTo(before));
+    assertThat(lastUpdated, lessThanOrEqualTo(after));
   }
 
   @Test
@@ -117,13 +124,14 @@ class InMemoryJobRepositoryTests {
     this.jobRepository.add(stepExecution);
 
     LocalDateTime before = LocalDateTime.now();
-
     this.jobRepository.update(stepExecution);
-
-    assertNotNull(stepExecution.getLastUpdated());
+    LocalDateTime after = LocalDateTime.now();
 
     LocalDateTime lastUpdated = stepExecution.getLastUpdated();
-    assertThat(Duration.between(before, lastUpdated), greaterThan(Duration.ofSeconds(1L)));
+
+    assertNotNull(lastUpdated);
+    assertThat(lastUpdated, greaterThanOrEqualTo(before));
+    assertThat(lastUpdated, lessThanOrEqualTo(after));
   }
 
   @Test
