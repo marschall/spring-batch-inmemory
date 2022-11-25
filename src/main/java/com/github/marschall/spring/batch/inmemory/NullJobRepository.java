@@ -1,8 +1,8 @@
 package com.github.marschall.spring.batch.inmemory;
 
 import java.lang.invoke.MethodHandles;
+import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.Date;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -58,7 +58,7 @@ public final class NullJobRepository implements JobRepository {
 
     JobExecution jobExecution = new JobExecution(jobInstance, JOB_EXECUTION_ID.incrementAndGet(), jobParameters);
     jobExecution.incrementVersion();
-    jobExecution.setLastUpdated(new Date());
+    jobExecution.setLastUpdated(LocalDateTime.now());
 
     return jobExecution;
   }
@@ -69,7 +69,7 @@ public final class NullJobRepository implements JobRepository {
     Objects.requireNonNull(jobExecution.getJobId(), "jobExecution.getJobId()");
     Objects.requireNonNull(jobExecution.getId(), "jobExecution.getId()");
 
-    jobExecution.setLastUpdated(new Date());
+    jobExecution.setLastUpdated(LocalDateTime.now());
     jobExecution.incrementVersion();
   }
 
@@ -78,7 +78,7 @@ public final class NullJobRepository implements JobRepository {
     validateStepExecution(stepExecution);
 
     stepExecution.setId(STEP_EXECUTION_ID.incrementAndGet());
-    stepExecution.setLastUpdated(new Date());
+    stepExecution.setLastUpdated(LocalDateTime.now());
     stepExecution.incrementVersion();
     this.checkForInterruption(stepExecution);
   }
@@ -96,7 +96,7 @@ public final class NullJobRepository implements JobRepository {
     validateStepExecution(stepExecution);
     Objects.requireNonNull(stepExecution.getId(), "StepExecution must already be saved (have an id assigned)");
 
-    stepExecution.setLastUpdated(new Date());
+    stepExecution.setLastUpdated(LocalDateTime.now());
     stepExecution.incrementVersion();
     this.checkForInterruption(stepExecution);
   }
@@ -120,8 +120,8 @@ public final class NullJobRepository implements JobRepository {
   }
 
   @Override
-  public int getStepExecutionCount(JobInstance jobInstance, String stepName) {
-    return 0;
+  public long getStepExecutionCount(JobInstance jobInstance, String stepName) {
+    return 0L;
   }
 
   @Nullable

@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
@@ -49,13 +52,13 @@ class SimpleJobRepositoryIntegrationTests {
             .toJobParameters();
 
     JobExecution firstExecution = this.jobRepository.createJobExecution(JOB_NAME, jobParams);
-    firstExecution.setStartTime(new Date());
+    firstExecution.setStartTime(LocalDateTime.now());
     assertNotNull(firstExecution.getLastUpdated());
 
     assertEquals(JOB_NAME, firstExecution.getJobInstance().getJobName());
 
     this.jobRepository.update(firstExecution);
-    firstExecution.setEndTime(new Date());
+    firstExecution.setEndTime(LocalDateTime.now());
     this.jobRepository.update(firstExecution);
     JobExecution secondExecution = this.jobRepository.createJobExecution(JOB_NAME, jobParams);
 
@@ -70,13 +73,17 @@ class SimpleJobRepositoryIntegrationTests {
   @Test
   void createAndFindWithNoStartDate() throws JobExecutionException {
     JobExecution firstExecution = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters);
-    firstExecution.setStartTime(new Date(0));
-    firstExecution.setEndTime(new Date(1));
+    firstExecution.setStartTime(this.ofEpochMillis(0));
+    firstExecution.setEndTime(this.ofEpochMillis(1));
     this.jobRepository.update(firstExecution);
     JobExecution secondExecution = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters);
 
     assertEquals(firstExecution.getJobInstance(), secondExecution.getJobInstance());
     assertEquals(JOB_NAME, secondExecution.getJobInstance().getJobName());
+  }
+
+  private LocalDateTime ofEpochMillis(long millis) {
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneOffset.UTC);
   }
 
   /**
@@ -94,13 +101,13 @@ class SimpleJobRepositoryIntegrationTests {
     assertEquals(firstStepExec, this.jobRepository.getLastStepExecution(firstJobExec.getJobInstance(), JOB_NAME));
 
     // first execution failed
-    firstJobExec.setStartTime(new Date(4));
-    firstStepExec.setStartTime(new Date(5));
+    firstJobExec.setStartTime(this.ofEpochMillis(4));
+    firstStepExec.setStartTime(this.ofEpochMillis(5));
     firstStepExec.setStatus(BatchStatus.FAILED);
-    firstStepExec.setEndTime(new Date(6));
+    firstStepExec.setEndTime(this.ofEpochMillis(6));
     this.jobRepository.update(firstStepExec);
     firstJobExec.setStatus(BatchStatus.FAILED);
-    firstJobExec.setEndTime(new Date(7));
+    firstJobExec.setEndTime(this.ofEpochMillis(7));
     this.jobRepository.update(firstJobExec);
 
     // second execution
@@ -119,7 +126,7 @@ class SimpleJobRepositoryIntegrationTests {
   void testSaveExecutionContext() throws JobExecutionException {
     ExecutionContext ctx = new ExecutionContext(Map.of("crashedPosition", 7));
     JobExecution jobExec = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters);
-    jobExec.setStartTime(new Date(0));
+    jobExec.setStartTime(this.ofEpochMillis(0));
     jobExec.setExecutionContext(ctx);
     StepExecution stepExec = new StepExecution(JOB_NAME, jobExec);
     stepExec.setExecutionContext(ctx);
@@ -145,7 +152,7 @@ class SimpleJobRepositoryIntegrationTests {
     JobExecution jobExecution = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters);
 
     //simulating a running job execution
-    jobExecution.setStartTime(new Date());
+    jobExecution.setStartTime(LocalDateTime.now());
     this.jobRepository.update(jobExecution);
 
     assertThrows(JobExecutionAlreadyRunningException.class, () -> this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters));
@@ -155,7 +162,7 @@ class SimpleJobRepositoryIntegrationTests {
   void getLastJobExecution() throws JobExecutionException, InterruptedException {
     JobExecution jobExecution = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters);
     jobExecution.setStatus(BatchStatus.FAILED);
-    jobExecution.setEndTime(new Date());
+    jobExecution.setEndTime(LocalDateTime.now());
     this.jobRepository.update(jobExecution);
     Thread.sleep(10);
     jobExecution = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters);
@@ -177,7 +184,7 @@ class SimpleJobRepositoryIntegrationTests {
             .toJobParameters();
     JobExecution jobExecution1 = this.jobRepository.createJobExecution(JOB_NAME, jobParameters);
     jobExecution1.setStatus(BatchStatus.COMPLETED);
-    jobExecution1.setEndTime(new Date());
+    jobExecution1.setEndTime(LocalDateTime.now());
     this.jobRepository.update(jobExecution1);
     JobExecution jobExecution2 = this.jobRepository.createJobExecution(JOB_NAME, jobParameters);
     assertNotNull(jobExecution1);

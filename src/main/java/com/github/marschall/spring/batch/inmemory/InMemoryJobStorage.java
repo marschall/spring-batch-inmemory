@@ -3,10 +3,10 @@ package com.github.marschall.spring.batch.inmemory;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -237,7 +237,7 @@ public final class InMemoryJobStorage {
       if (executionContext != null) {
         jobExecution.setExecutionContext(executionContext);
       }
-      jobExecution.setLastUpdated(new Date());
+      jobExecution.setLastUpdated(LocalDateTime.now());
 
       // Save the JobExecution so that it picks up an ID (useful for clients
       // monitoring asynchronous executions):
@@ -395,7 +395,7 @@ public final class InMemoryJobStorage {
 
   void update(JobExecution jobExecution) {
 
-    jobExecution.setLastUpdated(new Date());
+    jobExecution.setLastUpdated(LocalDateTime.now());
     this.synchronizeStatus(jobExecution);
     Long id = jobExecution.getId();
 
@@ -612,7 +612,7 @@ public final class InMemoryJobStorage {
     return jobNames;
   }
 
-  int getJobInstanceCount(String jobName) throws NoSuchJobException {
+  long getJobInstanceCount(String jobName) throws NoSuchJobException {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
@@ -804,7 +804,7 @@ public final class InMemoryJobStorage {
     }
   }
 
-  int countStepExecutions(JobInstance jobInstance, String stepName) {
+  long countStepExecutions(JobInstance jobInstance, String stepName) {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
@@ -812,7 +812,7 @@ public final class InMemoryJobStorage {
       if (statistics != null) {
         return statistics.getStepExecutionCount();
       } else {
-        return 0;
+        return 0L;
       }
     } finally {
       readLock.unlock();
@@ -972,7 +972,7 @@ public final class InMemoryJobStorage {
 
     private Long lastJobExecutionId;
 
-    private int stepExecutionCount;
+    private long stepExecutionCount;
 
     StepExecutionStatistics(Long lastStepExecutionId, Long lastJobExecutionId) {
       this.lastStepExecutionId = lastStepExecutionId;
@@ -993,12 +993,12 @@ public final class InMemoryJobStorage {
       this.lastJobExecutionId = lastJobExecutionId;
     }
 
-    int getStepExecutionCount() {
+    long getStepExecutionCount() {
       return this.stepExecutionCount;
     }
 
     void incrementStepExecutionCount() {
-      this.stepExecutionCount += 1;
+      this.stepExecutionCount += 1L;
     }
 
   }

@@ -8,8 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -58,10 +59,10 @@ class InMemoryJobRepositoryTests {
   @Test
   void updateValidJobExecution() throws JobExecutionException, InterruptedException {
 
-    Date before = this.jobExecution.getLastUpdated();
+    LocalDateTime before = this.jobExecution.getLastUpdated();
     Thread.sleep(2L);
     this.jobRepository.update(this.jobExecution);
-    Date after = this.jobExecution.getLastUpdated();
+    LocalDateTime after = this.jobExecution.getLastUpdated();
     assertNotNull(after);
     assertThat(after, greaterThan(before));
   }
@@ -80,14 +81,14 @@ class InMemoryJobRepositoryTests {
 
     StepExecution stepExecution = new StepExecution("stepName", this.jobExecution);
 
-    long before = System.currentTimeMillis();
+    LocalDateTime before = LocalDateTime.now();
 
     this.jobRepository.add(stepExecution);
 
     assertNotNull(stepExecution.getLastUpdated());
 
-    long lastUpdated = stepExecution.getLastUpdated().getTime();
-    assertTrue(lastUpdated > (before - 1000));
+    LocalDateTime lastUpdated = stepExecution.getLastUpdated();
+    assertThat(Duration.between(before, lastUpdated), greaterThan(Duration.ofSeconds(1L)));
   }
 
   @Test
@@ -115,14 +116,14 @@ class InMemoryJobRepositoryTests {
     StepExecution stepExecution = new StepExecution("stepName", this.jobExecution);
     this.jobRepository.add(stepExecution);
 
-    long before = System.currentTimeMillis();
+    LocalDateTime before = LocalDateTime.now();
 
     this.jobRepository.update(stepExecution);
 
     assertNotNull(stepExecution.getLastUpdated());
 
-    long lastUpdated = stepExecution.getLastUpdated().getTime();
-    assertTrue(lastUpdated > (before - 1000));
+    LocalDateTime lastUpdated = stepExecution.getLastUpdated();
+    assertThat(Duration.between(before, lastUpdated), greaterThan(Duration.ofSeconds(1L)));
   }
 
   @Test
@@ -149,7 +150,7 @@ class InMemoryJobRepositoryTests {
   @Test
   void createJobExecutionAlreadyRunning() {
     this.jobExecution.setStatus(BatchStatus.STARTED);
-    this.jobExecution.setStartTime(new Date());
+    this.jobExecution.setStartTime(LocalDateTime.now());
     this.jobExecution.setEndTime(null);
 
     this.jobRepository.update(this.jobExecution);
@@ -160,7 +161,7 @@ class InMemoryJobRepositoryTests {
   @Test
   void createJobExecutionStatusUnknown() {
     this.jobExecution.setStatus(BatchStatus.UNKNOWN);
-    this.jobExecution.setEndTime(new Date());
+    this.jobExecution.setEndTime(LocalDateTime.now());
 
     this.jobRepository.update(this.jobExecution);
 
@@ -170,7 +171,7 @@ class InMemoryJobRepositoryTests {
   @Test
   void createJobExecutionAlreadyComplete() {
     this.jobExecution.setStatus(BatchStatus.COMPLETED);
-    this.jobExecution.setEndTime(new Date());
+    this.jobExecution.setEndTime(LocalDateTime.now());
 
     this.jobRepository.update(this.jobExecution);
 
@@ -188,13 +189,13 @@ class InMemoryJobRepositoryTests {
   @Test
   void getStepExecutionCount() {
     // Given
-    int expectedResult = 1;
+    long expectedResult = 1L;
     String stepName = "stepName";
     StepExecution stepExecution = new StepExecution(stepName, this.jobExecution);
     this.jobRepository.add(stepExecution);
 
     // When
-    int actualResult = this.jobRepository.getStepExecutionCount(this.jobInstance, stepName);
+    long actualResult = this.jobRepository.getStepExecutionCount(this.jobInstance, stepName);
 
     // Then
     assertEquals(expectedResult, actualResult);

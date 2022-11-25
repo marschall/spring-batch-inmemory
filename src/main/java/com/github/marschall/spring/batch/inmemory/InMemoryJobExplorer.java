@@ -118,7 +118,7 @@ public final class InMemoryJobExplorer implements JobExplorer {
   }
 
   @Override
-  public int getJobInstanceCount(@Nullable String jobName) throws NoSuchJobException {
+  public long getJobInstanceCount(@Nullable String jobName) throws NoSuchJobException {
     if (jobName == null) {
       throw new NoSuchJobException("No job instances for job name null were found");
     }

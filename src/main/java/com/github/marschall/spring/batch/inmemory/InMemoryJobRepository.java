@@ -1,8 +1,8 @@
 package com.github.marschall.spring.batch.inmemory;
 
 import java.lang.invoke.MethodHandles;
+import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.Date;
 import java.util.Objects;
 
 import org.apache.commons.logging.Log;
@@ -29,7 +29,7 @@ public final class InMemoryJobRepository implements JobRepository {
 
   /**
    * Constructs a new {@link InMemoryJobRepository}.
-   * 
+   *
    * @param storage the storage to use, not {@code null}
    */
   public InMemoryJobRepository(InMemoryJobStorage storage) {
@@ -76,13 +76,13 @@ public final class InMemoryJobRepository implements JobRepository {
   public void add(StepExecution stepExecution) {
     validateStepExecution(stepExecution);
 
-    stepExecution.setLastUpdated(new Date());
+    stepExecution.setLastUpdated(LocalDateTime.now());
     this.storage.addStepExecution(stepExecution);
   }
 
   @Override
   public void addAll(Collection<StepExecution> stepExecutions) {
-    Date lastUpdated = new Date();
+    LocalDateTime lastUpdated = LocalDateTime.now();
     for (StepExecution stepExecution : stepExecutions) { // implicit null check
       validateStepExecution(stepExecution);
       // TODO only check job execution once
@@ -96,7 +96,7 @@ public final class InMemoryJobRepository implements JobRepository {
     validateStepExecution(stepExecution);
     Objects.requireNonNull(stepExecution.getId(), "StepExecution must already be saved (have an id assigned)");
 
-    stepExecution.setLastUpdated(new Date());
+    stepExecution.setLastUpdated(LocalDateTime.now());
     this.storage.updateStepExecution(stepExecution);
     this.checkForInterruption(stepExecution);
   }
@@ -120,7 +120,7 @@ public final class InMemoryJobRepository implements JobRepository {
   }
 
   @Override
-  public int getStepExecutionCount(JobInstance jobInstance, String stepName) {
+  public long getStepExecutionCount(JobInstance jobInstance, String stepName) {
     return this.storage.countStepExecutions(jobInstance, stepName);
   }
 

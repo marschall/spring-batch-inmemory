@@ -7,7 +7,7 @@ import static org.hamcrest.junit.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -28,26 +28,26 @@ abstract class AbstractLoggingTests {
 
   @Autowired
   private JobRepositoryTestUtils jobRepositoryTestUtils;
-  
+
   @Autowired
   private ApplicationContext applicationContext;
 
   @Test
   void launchJob() throws Exception {
-    long start = System.currentTimeMillis();
+    LocalDateTime start = LocalDateTime.now();
     Job job = this.applicationContext.getBean("loggingJob", Job.class);
     this.jobLauncherTestUtils.setJob(job);
     JobExecution jobExecution = this.jobLauncherTestUtils.launchJob();
     assertEquals(ExitStatus.COMPLETED, jobExecution.getExitStatus());
-    long end = System.currentTimeMillis();
+    LocalDateTime end = LocalDateTime.now();
 
-    assertThat(jobExecution.getStartTime(), greaterThanOrEqualTo(new Date(start)));
-    assertThat(jobExecution.getStartTime(), lessThanOrEqualTo(new Date(end)));
+    assertThat(jobExecution.getStartTime(), greaterThanOrEqualTo(start));
+    assertThat(jobExecution.getStartTime(), lessThanOrEqualTo(end));
 
     assertNotNull(jobExecution.getCreateTime());
-    assertThat(jobExecution.getCreateTime(), greaterThanOrEqualTo(new Date(start)));
+    assertThat(jobExecution.getCreateTime(), greaterThanOrEqualTo(start));
     assertThat(jobExecution.getCreateTime(), lessThanOrEqualTo(jobExecution.getStartTime()));
-    assertThat(jobExecution.getCreateTime(), lessThanOrEqualTo(new Date(end)));
+    assertThat(jobExecution.getCreateTime(), lessThanOrEqualTo(end));
   }
 
   @Test

@@ -87,11 +87,11 @@ public final class NullJobExplorer implements JobExplorer {
   }
 
   @Override
-  public int getJobInstanceCount(String jobName) throws NoSuchJobException {
+  public long getJobInstanceCount(String jobName) throws NoSuchJobException {
     if (jobName == null) {
       throw new NoSuchJobException("No job instances for job name null were found");
     }
-    return 0;
+    return 0L;
   }
 
 }

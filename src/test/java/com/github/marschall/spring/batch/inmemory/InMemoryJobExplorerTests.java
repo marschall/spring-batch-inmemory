@@ -8,8 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
@@ -102,7 +102,7 @@ class InMemoryJobExplorerTests {
     StepExecution stepExecution = this.jobExecution.createStepExecution("step");
     this.jobRepository.add(stepExecution);
     // switch status to running
-    this.jobExecution.setStartTime(new Date());
+    this.jobExecution.setStartTime(LocalDateTime.now());
     this.jobRepository.update(this.jobExecution);
 
     Set<JobExecution> runningJobExecutions = this.jobExplorer.findRunningJobExecutions(this.jobExecution.getJobInstance().getJobName());
