@@ -73,7 +73,7 @@ class SimpleJobExplorerIntegrationTests {
     }
 
     @Bean
-    PlatformTransactionManager txManager() {
+    PlatformTransactionManager transactionManager() {
       return new ResourcelessTransactionManager();
     }
 

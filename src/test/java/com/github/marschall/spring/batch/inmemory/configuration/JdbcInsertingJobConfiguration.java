@@ -21,7 +21,7 @@ import com.github.marschall.spring.batch.inmemory.InsertTasklet;
 public class JdbcInsertingJobConfiguration {
   
   @Autowired
-  public PlatformTransactionManager txManager;
+  public PlatformTransactionManager transactionManager;
   
   @Autowired
   public JobRepository jobRepository;
@@ -40,7 +40,7 @@ public class JdbcInsertingJobConfiguration {
   @Bean
   public Step insertingStep() {
     return new StepBuilder("insertingStep", this.jobRepository)
-      .tasklet(new InsertTasklet(this.jdbcOperations), this.txManager)
+      .tasklet(new InsertTasklet(this.jdbcOperations), this.transactionManager)
       .build();
   }
 

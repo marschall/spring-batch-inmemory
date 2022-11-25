@@ -29,7 +29,7 @@ class JdbcNullBatchConfigurationTests extends AbstractJdbcTests {
 
     // used to roll back the inserts
     @Bean
-    public PlatformTransactionManager txManager() {
+    public PlatformTransactionManager transactionManager() {
       return new DataSourceTransactionManager(this.dataSource);
     }
 

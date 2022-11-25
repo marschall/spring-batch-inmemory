@@ -30,7 +30,7 @@ public class LoggingJobConfiguration {
   public JobRepository jobRepository;
   
   @Autowired
-  public PlatformTransactionManager txManager;
+  public PlatformTransactionManager transactionManager;
 
   @Bean
   public Job loggingJob() {
@@ -45,21 +45,21 @@ public class LoggingJobConfiguration {
   @Bean
   public Step step1() {
     return new StepBuilder("step1", this.jobRepository)
-      .tasklet(this.loggingTasklet("step1"), this.txManager)
+      .tasklet(this.loggingTasklet("step1"), this.transactionManager)
       .build();
   }
 
   @Bean
   public Step step2() {
     return new StepBuilder("step2", this.jobRepository)
-            .tasklet(this.loggingTasklet("step2"), this.txManager)
+            .tasklet(this.loggingTasklet("step2"), this.transactionManager)
             .build();
   }
 
   @Bean
   public Step step3() {
     return new StepBuilder("step3", this.jobRepository)
-            .tasklet(this.loggingTasklet("step3"), this.txManager)
+            .tasklet(this.loggingTasklet("step3"), this.transactionManager)
             .build();
   }
 

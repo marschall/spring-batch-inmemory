@@ -33,7 +33,7 @@ class ClearJobRepositoryTests {
 
   @Autowired
   private JobLauncherTestUtils jobLauncherTestUtils;
-  
+
   @Autowired
   private ApplicationContext applicationContext;
 
@@ -81,7 +81,7 @@ class ClearJobRepositoryTests {
   static class ContextConfiguration {
 
     @Bean
-    public PlatformTransactionManager txManager() {
+    public PlatformTransactionManager transactionManager() {
       return new ResourcelessTransactionManager();
     }
 

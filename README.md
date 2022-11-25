@@ -43,7 +43,7 @@ class MySpringBatchIntegrationTests {
   static class ContextConfiguration {
 
     @Bean
-    public PlatformTransactionManager txManager() {
+    public PlatformTransactionManager transactionManager() {
       // if your job requires data access through JDBC replace this with DataSourceTransactionManager
       // to roll back JDBC DML operations 
       return new ResourcelessTransactionManager();

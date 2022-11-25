@@ -18,7 +18,7 @@ class NullBatchConfigurationTests extends AbstractLoggingTests {
   static class ContextConfiguration {
 
     @Bean
-    public PlatformTransactionManager txManager() {
+    public PlatformTransactionManager transactionManager() {
       return new ResourcelessTransactionManager();
     }
 
