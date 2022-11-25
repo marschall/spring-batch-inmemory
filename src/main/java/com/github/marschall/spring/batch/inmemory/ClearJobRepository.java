@@ -12,7 +12,7 @@ import java.lang.annotation.Target;
  * after test execution.
  * <p>
  * A bean of type {@link InMemoryJobStorage} needs to be present, {@link InMemoryBatchConfiguration}
- * exposes such a bean, {@link InMemoryBatchConfigurer} currently does not.
+ * exposes such a bean.
  *
  * @see InMemoryJobStorage#clear()
  */
