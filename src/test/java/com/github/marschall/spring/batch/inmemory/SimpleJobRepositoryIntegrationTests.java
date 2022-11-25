@@ -53,7 +53,7 @@ class SimpleJobRepositoryIntegrationTests {
 
     JobExecution firstExecution = this.jobRepository.createJobExecution(JOB_NAME, jobParams);
     firstExecution.setStartTime(LocalDateTime.now());
-    firstExecution.setStatus(BatchStatus.COMPLETED);
+    firstExecution.setStatus(BatchStatus.STOPPED);
     assertNotNull(firstExecution.getLastUpdated());
 
     assertEquals(JOB_NAME, firstExecution.getJobInstance().getJobName());
