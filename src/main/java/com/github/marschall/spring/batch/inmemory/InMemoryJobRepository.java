@@ -170,20 +170,17 @@ public final class InMemoryJobRepository implements JobRepository {
 
   @Override
   public void deleteStepExecution(StepExecution stepExecution) {
-    // TODO Auto-generated method stub
-    JobRepository.super.deleteStepExecution(stepExecution);
+    this.storage.deleteStepExecution(stepExecution);
   }
 
   @Override
   public void deleteJobExecution(JobExecution jobExecution) {
-    // TODO Auto-generated method stub
-    JobRepository.super.deleteJobExecution(jobExecution);
+    this.storage.deleteJobExecution(jobExecution);
   }
 
   @Override
   public void deleteJobInstance(JobInstance jobInstance) {
-    // TODO Auto-generated method stub
-    JobRepository.super.deleteJobInstance(jobInstance);
+    this.storage.deleteJobExecution(jobInstance);
   }
 
 }

@@ -34,6 +34,8 @@ import org.springframework.batch.item.ExecutionContext;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.lang.Nullable;
 
+import com.github.marschall.spring.batch.inmemory.InMemoryJobStorage.JobExecutions;
+
 /**
  * Backing store for {@link InMemoryJobRepository} and {@link InMemoryJobExplorer}.
  * <p>
@@ -803,6 +805,69 @@ public final class InMemoryJobStorage {
     }
   }
 
+  void deleteStepExecution(StepExecution stepExecution) {
+    Long jobExecutionId = stepExecution.getJobExecutionId();
+    if (jobExecutionId == null) {
+      return;
+    }
+    Long stepExecutionId = stepExecution.getId();
+    Lock writeLock = this.instanceLock.writeLock();
+    writeLock.lock();
+    try {
+      this.stepExecutionContextsById.remove(stepExecutionId);
+      Map<Long, StepExecution> stepExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
+      if (stepExecutions != null) {
+        if (stepExecutions.remove(stepExecutionId) != null) {
+          if (stepExecutions.isEmpty()) {
+            stepExecutionsByJobExecutionId.remove(jobExecutionId);
+          }
+        }
+      }
+    } finally {
+      writeLock.unlock();
+    }
+  }
+
+  void deleteJobExecution(JobExecution jobExecution) {
+    Lock writeLock = this.instanceLock.writeLock();
+    writeLock.lock();
+    try {
+      Long jobExecutionId = jobExecution.getId();
+      Map<Long, StepExecution> stepExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
+      if (stepExecutions != null && !stepExecutions.isEmpty()) {
+        // violates API contract but consistent with SimpleJobRepository
+        throw new IllegalStateException("found existing job executions");
+        
+      }
+      this.jobExecutionsById.remove(jobExecutionId);
+      JobExecutions jobExecutions = this.jobInstanceToExecutions.get(jobExecutionId);
+      if (jobExecutions != null) {
+        jobExecutions.removeJobExecutionId(jobExecutionId);
+        jobExecutions.removeBlockingJobExecutionId(jobExecutionId);
+      }
+      this.jobExecutionContextsById.remove(jobExecutionId);
+    } finally {
+      writeLock.unlock();
+    }
+  }
+
+  void deleteJobExecution(JobInstance jobInstance) {
+    Lock writeLock = this.instanceLock.writeLock();
+    writeLock.lock();
+    try {
+      JobExecutions jobExecutions = this.jobInstanceToExecutions.get(jobInstance.getInstanceId());
+      if (jobExecutions != null && !jobExecutions.isEmpty()) {
+        // API contract is unclear
+        throw new IllegalStateException("found existing job executions");
+      }
+      // TODO delete stepExecutionStatistics
+      this.instancesById.remove(jobInstance.getInstanceId());
+      this.jobInstancesByName.remove(jobInstance.getJobName());
+    } finally {
+      writeLock.unlock();
+    }
+  }
+
   void updateStepExecutionContext(StepExecution stepExecution) {
     ExecutionContext stepExecutionContext = stepExecution.getExecutionContext();
     if (stepExecutionContext != null) {
@@ -1072,6 +1137,10 @@ public final class InMemoryJobStorage {
     void removeBlockingJobExecutionId(Long jobExecutionId) {
       this.blockingJobExecutionIds.remove(jobExecutionId);
     }
+    
+    void removeJobExecutionId(Long jobExecutionId) {
+      this.jobExecutionIds.remove(jobExecutionId);
+    }
 
     boolean hasBlockingJobExecutionId() {
       return !this.blockingJobExecutionIds.isEmpty();
@@ -1083,6 +1152,10 @@ public final class InMemoryJobStorage {
 
     List<Long> getJobExecutionIds() {
       return this.jobExecutionIds;
+    }
+    
+    boolean isEmpty() {
+      return this.jobExecutionIds.isEmpty() && this.blockingJobExecutionIds.isEmpty();
     }
 
   }
