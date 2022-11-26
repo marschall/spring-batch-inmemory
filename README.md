@@ -1,4 +1,4 @@
-Spring Batch In-Memory
+Spring Batch In-Memory [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.github.marschall/spring-batch-inmemory/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.github.marschall/spring-batch-inmemory)  [![javadoc](https://javadoc.io/badge2/com.github.marschall/spring-batch-inmemory/javadoc.svg)](https://javadoc.io/doc/com.github.marschall/spring-batch-inmemory)
 ======================
 
 Alternative implementations of the Spring Batch `JobRepository` and `JobExplorer` interfaces that don't require committing JDBC transactions. This allows you to roll back all DML operations in integration tests.
