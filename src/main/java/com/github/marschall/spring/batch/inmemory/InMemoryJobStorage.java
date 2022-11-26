@@ -34,8 +34,6 @@ import org.springframework.batch.item.ExecutionContext;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.lang.Nullable;
 
-import com.github.marschall.spring.batch.inmemory.InMemoryJobStorage.JobExecutions;
-
 /**
  * Backing store for {@link InMemoryJobRepository} and {@link InMemoryJobExplorer}.
  * <p>
@@ -445,7 +443,7 @@ public final class InMemoryJobStorage {
     try {
       JobExecution presisted = this.jobExecutionsById.get(jobExecution.getId());
       // copy and pasted from MapJobExecutionDao
-      // not clear of synchronized is needed
+      // not clear if synchronized is needed
       if (presisted.getVersion().intValue() != jobExecution.getVersion().intValue()) {
         jobExecution.upgradeStatus(presisted.getStatus());
         jobExecution.setVersion(presisted.getVersion());
@@ -545,13 +543,7 @@ public final class InMemoryJobStorage {
   }
 
   List<JobInstance> getJobInstances(String jobName, int start, int count) {
-
-    boolean exactPattern = isExactPattern(jobName);
-    if (exactPattern) {
-      return this.getJobInstancesByNameExact(jobName, start, count);
-    } else {
-      return this.getJobInstancesByNamePattern(jobName, start, count);
-    }
+    return this.getJobInstancesByNameExact(jobName, start, count);
   }
 
   private List<JobInstance> getJobInstancesByNameExact(String jobName, int start, int count) {
@@ -583,14 +575,26 @@ public final class InMemoryJobStorage {
   }
 
   private List<JobInstance> getJobInstancesByNamePattern(String jobName, int start, int count) {
-    Pattern pattern = Pattern.compile(jobName.replaceAll("\\*", ".*"));
+    boolean exactPattern = isExactPattern(jobName);
+    Pattern pattern;
+    if (exactPattern) {
+      pattern = null;
+    } else {
+      pattern = Pattern.compile(jobName.replaceAll("\\*", ".*"));
+    }
     List<JobInstance> jobInstancesUnstorted = new ArrayList<>();
 
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
     try {
       for (Entry<String, List<JobInstanceAndParameters>> entries : this.jobInstancesByName.entrySet()) {
-        if (pattern.matcher(entries.getKey()).matches()) {
+        boolean matches;
+        if (!exactPattern && pattern != null) {
+          matches = pattern.matcher(entries.getKey()).matches();
+        } else {
+          matches = entries.getKey().equals(jobName);
+        }
+        if (matches) {
           for (JobInstanceAndParameters jobInstanceAndParameters : entries.getValue()) {
             jobInstancesUnstorted.add(jobInstanceAndParameters.getJobInstance());
           }

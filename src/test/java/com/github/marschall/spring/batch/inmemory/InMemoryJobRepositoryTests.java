@@ -7,6 +7,7 @@ import static org.hamcrest.junit.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -47,6 +48,43 @@ class InMemoryJobRepositoryTests {
 
     this.jobExecution = this.jobRepository.createJobExecution("RepositoryTest", this.jobParameters);
     this.jobInstance = this.jobExecution.getJobInstance();
+  }
+
+  @Test
+  void getJobNames() throws JobExecutionException {
+    String jobName = this.jobInstance.getJobName();
+    List<String> jobNames = this.jobRepository.getJobNames();
+    assertEquals(List.of(jobName), jobNames);
+
+    String newJobName = jobName + "new";
+    this.jobRepository.createJobExecution(newJobName, new JobParameters());
+    jobNames = this.jobRepository.getJobNames();
+    assertEquals(List.of(jobName, newJobName), jobNames);
+  }
+
+  @Test
+  void findJobInstancesByName() {
+    String jobName = this.jobInstance.getJobName();
+
+    // prefix match
+    String namePattern = jobName.substring(0, jobName.length() - 1) + "*";
+    List<JobInstance> jobInstances = this.jobRepository.findJobInstancesByName(namePattern, 0, 2);
+    assertEquals(List.of(this.jobInstance), jobInstances);
+
+    // suffix match
+    namePattern = "*" + jobName.substring(1);
+    jobInstances = this.jobRepository.findJobInstancesByName(namePattern, 0, 2);
+    assertEquals(List.of(this.jobInstance), jobInstances);
+  }
+
+  @Test
+  void getJobInstance() {
+    String jobName = this.jobInstance.getJobName();
+    assertEquals(this.jobInstance, this.jobRepository.getJobInstance(jobName, this.jobParameters));
+    JobParameters differentJobParameters = new JobParametersBuilder(this.jobParameters)
+                                                      .addString("key", "value", true)
+                                                      .toJobParameters();
+    assertNull(this.jobRepository.getJobInstance(jobName, differentJobParameters));
   }
 
   @Test
@@ -146,12 +184,12 @@ class InMemoryJobRepositoryTests {
   }
 
   @Test
-  void isJobInstanceFalse() {
+  void iisJobInstanceExistsFalse() {
     assertFalse(this.jobRepository.isJobInstanceExists("foo", new JobParameters()));
   }
 
   @Test
-  void isJobInstanceTrue() {
+  void isJobInstanceExistsTrue() {
     assertTrue(this.jobRepository.isJobInstanceExists(this.jobInstance.getJobName(), this.jobParameters));
   }
 

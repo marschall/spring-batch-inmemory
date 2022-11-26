@@ -163,6 +163,7 @@ public final class InMemoryJobRepository implements JobRepository {
     return this.storage.findJobExecutions(jobInstance);
   }
 
+  @Nullable
   @Override
   public JobInstance getJobInstance(String jobName, JobParameters jobParameters) {
     return this.storage.getJobInstance(jobName, jobParameters);

@@ -68,6 +68,7 @@ public final class InMemoryJobExplorer implements JobExplorer {
     return this.storage.getJobInstance(jobInstanceId);
   }
 
+  @Nullable
   @Override
   public JobInstance getJobInstance(String jobName, JobParameters jobParameters) {
     return this.storage.getJobInstance(jobName, jobParameters);

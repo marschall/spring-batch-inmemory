@@ -115,6 +115,12 @@ class InMemoryJobExplorerTests {
     StepExecution readBackStepExecution = readBackStepExecutions.iterator().next();
     assertEquals(stepExecution, readBackStepExecution);
   }
+  
+  @Test
+  void findRunningJobExecutionsNull() {
+    Set<JobExecution> runningJobExecutions = this.jobExplorer.findRunningJobExecutions(null);
+    assertThat(runningJobExecutions, empty());
+  }
 
   @Test
   void findJobExecutions() {
@@ -135,11 +141,38 @@ class InMemoryJobExplorerTests {
   @Test
   void getJobInstance() {
     assertEquals(this.jobInstance, this.jobExplorer.getJobInstance(this.jobInstance.getId()));
+
+    String jobName = this.jobInstance.getJobName();
+    assertEquals(this.jobInstance, this.jobExplorer.getJobInstance(jobName, new JobParameters()));
+    JobParameters differentJobParameters = new JobParametersBuilder()
+                                                      .addString("key", "value", true)
+                                                      .toJobParameters();
+    assertNull(this.jobExplorer.getJobInstance(jobName, differentJobParameters));
   }
 
   @Test
-  void getLastJobInstances() {
-    assertEquals(List.of(this.jobInstance), this.jobExplorer.getJobInstances(this.jobInstance.getJobName(), 0, 1));
+  void getJobInstances() {
+    String jobName = this.jobInstance.getJobName();
+    assertEquals(List.of(this.jobInstance), this.jobExplorer.getJobInstances(jobName, 0, 2));
+
+    String namePattern = jobName.substring(0, jobName.length() - 1) + "*";
+    assertEquals(List.of(), this.jobExplorer.getJobInstances(namePattern, 0, 2));
+  }
+
+  @Test
+  void findJobInstancesByJobName() {
+    String jobName = this.jobInstance.getJobName();
+    assertEquals(List.of(this.jobInstance), this.jobExplorer.findJobInstancesByJobName(jobName, 0, 2));
+
+    // prefix match
+    String namePattern = jobName.substring(0, jobName.length() - 1) + "*";
+    List<JobInstance> jobInstances = this.jobExplorer.findJobInstancesByJobName(namePattern, 0, 2);
+    assertEquals(List.of(this.jobInstance), jobInstances);
+
+    // suffix match
+    namePattern = "*" + jobName.substring(1);
+    jobInstances = this.jobExplorer.findJobInstancesByJobName(namePattern, 0, 2);
+    assertEquals(List.of(this.jobInstance), jobInstances);
   }
 
   @Test
@@ -162,6 +195,11 @@ class InMemoryJobExplorerTests {
     this.jobRepository.createJobInstance(jobName, new JobParametersBuilder().addLong("key", 4L).toJobParameters());
 
     assertEquals(4, this.jobExplorer.getJobInstanceCount(jobName));
+  }
+
+  @Test
+  void getJobInstanceCountNull() throws NoSuchJobException {
+    assertThrows(NoSuchJobException.class, () -> this.jobExplorer.getJobInstanceCount(null));
   }
 
   @Test
