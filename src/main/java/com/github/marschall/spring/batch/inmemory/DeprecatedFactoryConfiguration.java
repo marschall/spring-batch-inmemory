@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
  * Requires a {@link JobRepository}.
  */
 @Configuration
-@Deprecated(forRemoval = true)
+@Deprecated(forRemoval = true, since = "2.0.0")
 public class DeprecatedFactoryConfiguration {
   
   @Autowired
