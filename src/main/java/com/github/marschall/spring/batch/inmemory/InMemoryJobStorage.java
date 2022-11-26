@@ -358,10 +358,10 @@ public final class InMemoryJobStorage {
       }
       Set<JobExecution> runningJobExecutions = new HashSet<>();
       for (JobInstanceAndParameters jobInstanceAndParameters : jobInstancesAndParameters) {
-        JobExecutions jobExecutions = this.getJobExecutionsUnlocked(jobInstanceAndParameters.getJobInstance());
+        JobExecutions jobExecutions = this.getJobExecutionsUnlocked(jobInstanceAndParameters.jobInstance());
         if (jobExecutions != null) {
           // running is a blocking status, therefore we can limit the number of job executions we check
-          Set<Long> jobExecutionIds = jobExecutions.getBlockingJobExecutionIds();
+          Set<Long> jobExecutionIds = jobExecutions.blockingJobExecutionIds();
           for (Long jobExecutionId : jobExecutionIds) {
             JobExecution jobExecution = this.jobExecutionsById.get(jobExecutionId);
             if (jobExecution.isRunning()) {
@@ -482,7 +482,7 @@ public final class InMemoryJobStorage {
     if(instancesAndParameters != null) {
       for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
         if (instanceAndParametes.areIdentifyingJoParametersEqualTo(jobParameters)) {
-          return instanceAndParametes.getJobInstance();
+          return instanceAndParametes.jobInstance();
         }
       }
     }
@@ -516,10 +516,10 @@ public final class InMemoryJobStorage {
       return null;
     }
     if (jobInstances.size() == 1) {
-      return jobInstances.get(0).getJobInstance();
+      return jobInstances.get(0).jobInstance();
     } else {
       // the last one should have the highest id
-      return jobInstances.get(jobInstances.size() - 1).getJobInstance();
+      return jobInstances.get(jobInstances.size() - 1).jobInstance();
     }
   }
 
@@ -564,7 +564,7 @@ public final class InMemoryJobStorage {
         return List.of();
       }
       return jobInstances.stream()
-                         .map(JobInstanceAndParameters::getJobInstance)
+                         .map(JobInstanceAndParameters::jobInstance)
                          .sorted(Comparator.comparingLong(JobInstance::getInstanceId))
                          .skip(start)
                          .limit(count)
@@ -596,7 +596,7 @@ public final class InMemoryJobStorage {
         }
         if (matches) {
           for (JobInstanceAndParameters jobInstanceAndParameters : entries.getValue()) {
-            jobInstancesUnstorted.add(jobInstanceAndParameters.getJobInstance());
+            jobInstancesUnstorted.add(jobInstanceAndParameters.jobInstance());
           }
         }
       }
@@ -1010,36 +1010,7 @@ public final class InMemoryJobStorage {
     }
   }
 
-  static final class StepExecutionKey {
-
-    private final long jobInstanceId;
-
-    private final String stepName;
-
-    StepExecutionKey(long jobInstanceId, String stepName) {
-      this.jobInstanceId = jobInstanceId;
-      this.stepName = stepName;
-    }
-
-    @Override
-    public int hashCode() {
-      int result = Long.hashCode(this.jobInstanceId);
-      result = (31 * result) + this.stepName.hashCode();
-      return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (this == obj) {
-        return true;
-      }
-      if (!(obj instanceof StepExecutionKey)) {
-        return false;
-      }
-      StepExecutionKey other = (StepExecutionKey) obj;
-      return (this.jobInstanceId == other.jobInstanceId)
-              && Objects.equals(this.stepName, other.stepName);
-    }
+  record StepExecutionKey(long jobInstanceId, String stepName) {
 
   }
 
@@ -1080,20 +1051,7 @@ public final class InMemoryJobStorage {
 
   }
 
-  static final class JobInstanceAndParameters {
-
-    private final JobInstance jobInstance;
-
-    private final Map<String, JobParameter<?>> identifyingJoParameters;
-
-    JobInstanceAndParameters(JobInstance jobInstance, Map<String, JobParameter<?>> identifyingJoParameters) {
-      this.jobInstance = jobInstance;
-      this.identifyingJoParameters =identifyingJoParameters;
-    }
-
-    JobInstance getJobInstance() {
-      return this.jobInstance;
-    }
+  record JobInstanceAndParameters(JobInstance jobInstance, Map<String, JobParameter<?>> identifyingJoParameters) {
 
     boolean areIdentifyingJoParametersEqualTo(JobParameters otherJobParameters) {
       Map<String, JobParameter<?>> otherJobParametersMap = otherJobParameters.getParameters();
@@ -1115,19 +1073,10 @@ public final class InMemoryJobStorage {
 
   }
 
-  static final class JobExecutions {
-
-    private final Set<Long> blockingJobExecutionIds;
-
-    private final List<Long> jobExecutionIds;
+  record JobExecutions(Set<Long> blockingJobExecutionIds, List<Long> jobExecutionIds) {
 
     JobExecutions() {
-      this.blockingJobExecutionIds = new HashSet<>();
-      this.jobExecutionIds = new ArrayList<>();
-    }
-
-    Set<Long> getBlockingJobExecutionIds() {
-      return this.blockingJobExecutionIds;
+      this(new HashSet<>(), new ArrayList<>());
     }
 
     void addBlockingJobExecutionId(Long jobExecutionId) {
