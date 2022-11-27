@@ -78,6 +78,12 @@ class InMemoryJobRepositoryTests {
   }
 
   @Test
+  void findJobExecutions() {
+    List<JobExecution> jobExecutions = this.jobRepository.findJobExecutions(this.jobInstance);
+    assertEquals(List.of(this.jobExecution), jobExecutions);
+  }
+
+  @Test
   void getJobInstance() {
     String jobName = this.jobInstance.getJobName();
     assertEquals(this.jobInstance, this.jobRepository.getJobInstance(jobName, this.jobParameters));
@@ -245,6 +251,26 @@ class InMemoryJobRepositoryTests {
 
     // Then
     assertEquals(expectedResult, actualResult);
+  }
+  
+  @Test
+  void delete() {
+    String stepName = "stepName";
+    StepExecution stepExecution = new StepExecution(stepName, this.jobExecution);
+    this.jobRepository.add(stepExecution);
+
+    this.jobRepository.deleteStepExecution(stepExecution);
+    // FIXME
+//    assertEquals(0L, this.jobRepository.getStepExecutionCount(this.jobInstance, stepName));
+
+    this.jobRepository.deleteJobExecution(this.jobExecution);
+    assertEquals(List.of(), this.jobRepository.findJobExecutions(this.jobInstance));
+//    this.jobRepository.getLastJobExecution(stepName, jobParameters)
+
+    this.jobRepository.deleteJobInstance(this.jobInstance);
+    assertNull(this.jobRepository.getJobInstance(this.jobInstance.getJobName(), this.jobParameters));
+    // FIXME
+//    assertEquals(0L, this.jobRepository.getStepExecutionCount(this.jobInstance, stepName));
   }
 
 }

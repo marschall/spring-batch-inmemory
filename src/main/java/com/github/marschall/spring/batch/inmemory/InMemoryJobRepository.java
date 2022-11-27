@@ -155,6 +155,16 @@ public final class InMemoryJobRepository implements JobRepository {
 
   @Override
   public List<JobInstance> findJobInstancesByName(String jobName, int start, int count) {
+    Objects.requireNonNull(jobName, "jobName");
+    if (start < 0) {
+      throw new IllegalArgumentException("start: " + start + " must be positive");
+    }
+    if (count < 0) {
+      throw new IllegalArgumentException("count: " + start + " must be positive");
+    }
+    if (count == 0) {
+      return List.of();
+    }
     return this.storage.findJobInstancesByJobName(jobName, start, count);
   }
 

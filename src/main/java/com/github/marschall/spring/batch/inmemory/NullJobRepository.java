@@ -3,6 +3,7 @@ package com.github.marschall.spring.batch.inmemory;
 import java.lang.invoke.MethodHandles;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -128,6 +129,52 @@ public final class NullJobRepository implements JobRepository {
   @Override
   public JobExecution getLastJobExecution(String jobName, JobParameters jobParameters) {
     return null;
+  }
+
+  @Override
+  public List<String> getJobNames() {
+    return List.of();
+  }
+
+  @Override
+  public List<JobInstance> findJobInstancesByName(String jobName, int start, int count) {
+    Objects.requireNonNull(jobName, "jobName");
+    if (start < 0) {
+      throw new IllegalArgumentException("start: " + start + " must be positive");
+    }
+    if (count < 0) {
+      throw new IllegalArgumentException("count: " + start + " must be positive");
+    }
+    return List.of();
+  }
+
+  @Override
+  public List<JobExecution> findJobExecutions(JobInstance jobInstance) {
+    Objects.requireNonNull(jobInstance, "jobInstance");
+    return List.of();
+  }
+
+  @Nullable
+  @Override
+  public JobInstance getJobInstance(String jobName, JobParameters jobParameters) {
+    Objects.requireNonNull(jobName, "jobName");
+    Objects.requireNonNull(jobParameters, "jobParameters");
+    return null;
+  }
+
+  @Override
+  public void deleteStepExecution(StepExecution stepExecution) {
+    Objects.requireNonNull(stepExecution, "stepExecution");
+  }
+
+  @Override
+  public void deleteJobExecution(JobExecution jobExecution) {
+    Objects.requireNonNull(jobExecution, "jobExecution");
+  }
+
+  @Override
+  public void deleteJobInstance(JobInstance jobInstance) {
+    Objects.requireNonNull(jobInstance, "jobInstance");
   }
 
   private static void validateStepExecution(StepExecution stepExecution) {
