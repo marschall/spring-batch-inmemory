@@ -1,6 +1,6 @@
 package com.github.marschall.spring.batch.inmemory;
 
-import org.springframework.batch.support.transaction.ResourcelessTransactionManager;
+import org.springframework.batch.infrastructure.support.transaction.ResourcelessTransactionManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;

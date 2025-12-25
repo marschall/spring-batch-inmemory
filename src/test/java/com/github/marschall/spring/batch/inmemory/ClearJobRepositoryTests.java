@@ -11,11 +11,11 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.batch.core.ExitStatus;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.support.transaction.ResourcelessTransactionManager;
-import org.springframework.batch.test.JobLauncherTestUtils;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.infrastructure.support.transaction.ResourcelessTransactionManager;
+import org.springframework.batch.test.JobOperatorTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -32,7 +32,7 @@ import com.github.marschall.spring.batch.inmemory.configuration.LoggingJobConfig
 class ClearJobRepositoryTests {
 
   @Autowired
-  private JobLauncherTestUtils jobLauncherTestUtils;
+  private JobOperatorTestUtils jobOperatorTestUtils;
 
   @Autowired
   private ApplicationContext applicationContext;
@@ -43,20 +43,20 @@ class ClearJobRepositoryTests {
   void setUp() {
     this.jobParameters = new JobParameters();
     Job job = this.applicationContext.getBean("loggingJob", Job.class);
-    this.jobLauncherTestUtils.setJob(job);
+    this.jobOperatorTestUtils.setJob(job);
   }
 
   private String getJobName() {
-    return this.jobLauncherTestUtils.getJob().getName();
+    return this.jobOperatorTestUtils.getJob().getName();
   }
 
   private boolean isJobInstanceExists() {
-    return this.jobLauncherTestUtils.getJobRepository().isJobInstanceExists(this.getJobName(), this.jobParameters);
+    return this.jobOperatorTestUtils.getJobRepository().getJobInstance(this.getJobName(), this.jobParameters) != null;
   }
 
   private Object launchJob() throws Exception {
     // return type is Object because of https://github.com/spring-projects/spring-batch/issues/3976
-    return this.jobLauncherTestUtils.launchJob(this.jobParameters);
+    return this.jobOperatorTestUtils.startJob(this.jobParameters);
   }
 
   @Test

@@ -2,22 +2,21 @@ package com.github.marschall.spring.batch.inmemory;
 
 import java.lang.invoke.MethodHandles;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobInstance;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.explore.JobExplorer;
-import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
-import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
+import org.jspecify.annotations.Nullable;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.JobInstance;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.launch.NoSuchJobException;
 import org.springframework.batch.core.repository.JobRepository;
-import org.springframework.batch.core.repository.JobRestartException;
-import org.springframework.lang.Nullable;
+import org.springframework.batch.core.repository.explore.JobExplorer;
+import org.springframework.batch.core.step.StepExecution;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
 
 /**
  * In-memory implementation of {@link JobExplorer} based on {@link JobRepository}.
@@ -52,50 +51,33 @@ public final class InMemoryJobRepository implements JobRepository {
   }
 
   @Override
-  public JobExecution createJobExecution(String jobName, JobParameters jobParameters)
-          throws JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException {
-    Objects.requireNonNull(jobName, "jobName");
+  public JobExecution createJobExecution(JobInstance jobInstance, JobParameters jobParameters, ExecutionContext executionContext) {
+    Objects.requireNonNull(jobInstance, "jobInstance");
     Objects.requireNonNull(jobParameters, "jobParameters");
-    return this.storage.createJobExecution(jobName, jobParameters);
+    return this.storage.createJobExecution(jobInstance, jobParameters, executionContext);
+  }
+  
+  @Override
+  public StepExecution createStepExecution(String stepName, JobExecution jobExecution) {
+    Objects.requireNonNull(stepName, "stepName");
+    Objects.requireNonNull(jobExecution, "jobExecution");
+    return this.storage.createStepExecution(stepName, jobExecution);
   }
 
   @Override
   public void update(JobExecution jobExecution) {
     Objects.requireNonNull(jobExecution, "jobExecution");
-    Objects.requireNonNull(jobExecution.getJobId(), "jobExecution.getJobId()");
-    Objects.requireNonNull(jobExecution.getId(), "jobExecution.getId()");
     this.storage.update(jobExecution);
   }
 
   private static void validateStepExecution(StepExecution stepExecution) {
     Objects.requireNonNull(stepExecution, "StepExecution cannot be null.");
     Objects.requireNonNull(stepExecution.getStepName(), "StepExecution's step name cannot be null.");
-    Objects.requireNonNull(stepExecution.getJobExecutionId(), "StepExecution must belong to persisted JobExecution");
-  }
-
-  @Override
-  public void add(StepExecution stepExecution) {
-    validateStepExecution(stepExecution);
-
-    stepExecution.setLastUpdated(LocalDateTime.now());
-    this.storage.addStepExecution(stepExecution);
-  }
-
-  @Override
-  public void addAll(Collection<StepExecution> stepExecutions) {
-    LocalDateTime lastUpdated = LocalDateTime.now();
-    for (StepExecution stepExecution : stepExecutions) { // implicit null check
-      validateStepExecution(stepExecution);
-      // TODO only check job execution once
-      stepExecution.setLastUpdated(lastUpdated);
-    }
-    this.storage.addStepExecutions(stepExecutions);
   }
 
   @Override
   public void update(StepExecution stepExecution) {
     validateStepExecution(stepExecution);
-    Objects.requireNonNull(stepExecution.getId(), "StepExecution must already be saved (have an id assigned)");
 
     stepExecution.setLastUpdated(LocalDateTime.now());
     this.storage.updateStepExecution(stepExecution);
@@ -105,7 +87,6 @@ public final class InMemoryJobRepository implements JobRepository {
   @Override
   public void updateExecutionContext(StepExecution stepExecution) {
     validateStepExecution(stepExecution);
-    Objects.requireNonNull(stepExecution.getId(), "StepExecution must already be saved (have an id assigned)");
     this.storage.updateStepExecutionContext(stepExecution);
   }
 
@@ -114,9 +95,8 @@ public final class InMemoryJobRepository implements JobRepository {
     this.storage.updateJobExecutionContext(jobExecution);
   }
 
-  @Nullable
   @Override
-  public StepExecution getLastStepExecution(JobInstance jobInstance, String stepName) {
+  public @Nullable StepExecution getLastStepExecution(JobInstance jobInstance, String stepName) {
     return this.storage.getLastStepExecution(jobInstance, stepName);
   }
 
@@ -125,9 +105,8 @@ public final class InMemoryJobRepository implements JobRepository {
     return this.storage.countStepExecutions(jobInstance, stepName);
   }
 
-  @Nullable
   @Override
-  public JobExecution getLastJobExecution(String jobName, JobParameters jobParameters) {
+  public @Nullable JobExecution getLastJobExecution(String jobName, JobParameters jobParameters) {
     return this.storage.getLastJobExecution(jobName, jobParameters);
   }
 
@@ -155,6 +134,16 @@ public final class InMemoryJobRepository implements JobRepository {
 
   @Override
   public List<JobInstance> findJobInstancesByName(String jobName, int start, int count) {
+    return this.getJobInstances(jobName, start, count);
+  }
+  
+  @Override
+  public List<JobInstance> findJobInstancesByJobName(String jobName, int start, int count) {
+    return this.getJobInstances(jobName, start, count);
+  }
+  
+  @Override
+  public List<JobInstance> getJobInstances(String jobName, int start, int count) {
     Objects.requireNonNull(jobName, "jobName");
     if (start < 0) {
       throw new IllegalArgumentException("start: " + start + " must be positive");
@@ -169,14 +158,33 @@ public final class InMemoryJobRepository implements JobRepository {
   }
 
   @Override
+  public List<JobInstance> findJobInstances(String jobName) {
+    return this.storage.findJobInstancesByJobName(jobName);
+  }
+
+  @Override
   public List<JobExecution> findJobExecutions(JobInstance jobInstance) {
     return this.storage.findJobExecutions(jobInstance);
   }
 
-  @Nullable
   @Override
-  public JobInstance getJobInstance(String jobName, JobParameters jobParameters) {
+  public @Nullable JobInstance getJobInstance(String jobName, JobParameters jobParameters) {
     return this.storage.getJobInstance(jobName, jobParameters);
+  }
+
+  @Override
+  public @Nullable JobInstance getJobInstance(long jobInstanceId) {
+    return this.storage.getJobInstance(jobInstanceId);
+  }
+
+  @Override
+  public @Nullable JobInstance getLastJobInstance(String jobName) {
+    return this.storage.getLastJobInstance(jobName);
+  }
+
+  @Override
+  public long getJobInstanceCount(String jobName) throws NoSuchJobException {
+    return this.storage.getJobInstanceCount(jobName);
   }
 
   @Override
@@ -192,6 +200,36 @@ public final class InMemoryJobRepository implements JobRepository {
   @Override
   public void deleteJobInstance(JobInstance jobInstance) {
     this.storage.deleteJobExecution(jobInstance);
+  }
+
+  @Override
+  public @Nullable JobExecution getJobExecution(long executionId) {
+    return this.storage.getJobExecution(executionId);
+  }
+
+  @Override
+  public List<JobExecution> getJobExecutions(JobInstance jobInstance) {
+    return this.storage.getJobExecutions(jobInstance);
+  }
+
+  @Override
+  public @Nullable JobExecution getLastJobExecution(JobInstance jobInstance) {
+    return this.storage.getLastJobExecution(jobInstance);
+  }
+
+  @Override
+  public Set<JobExecution> findRunningJobExecutions(String jobName) {
+    return this.storage.findRunningJobExecutions(jobName);
+  }
+
+  @Override
+  public @Nullable StepExecution getStepExecution(long jobExecutionId, long stepExecutionId) {
+    return this.storage.getStepExecution(jobExecutionId, stepExecutionId);
+  }
+
+  @Override
+  public @Nullable StepExecution getStepExecution(long stepExecutionId) {
+    return this.storage.getStepExecution(stepExecutionId);
   }
 
 }

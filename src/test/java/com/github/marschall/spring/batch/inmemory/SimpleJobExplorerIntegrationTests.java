@@ -7,24 +7,24 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.BatchStatus;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobExecutionException;
-import org.springframework.batch.core.JobInstance;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.Step;
-import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
-import org.springframework.batch.core.explore.JobExplorer;
-import org.springframework.batch.core.explore.support.SimpleJobExplorer;
+import org.springframework.batch.core.job.JobExecutionException;
+import org.springframework.batch.core.job.JobInstance;
 import org.springframework.batch.core.job.flow.FlowExecutionStatus;
 import org.springframework.batch.core.job.flow.FlowStep;
 import org.springframework.batch.core.job.flow.support.SimpleFlow;
 import org.springframework.batch.core.job.flow.support.StateTransition;
 import org.springframework.batch.core.job.flow.support.state.EndState;
 import org.springframework.batch.core.job.flow.support.state.StepState;
+import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.repository.explore.JobExplorer;
+import org.springframework.batch.core.repository.explore.support.SimpleJobExplorer;
+import org.springframework.batch.core.step.Step;
+import org.springframework.batch.core.step.StepExecution;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.support.transaction.ResourcelessTransactionManager;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
+import org.springframework.batch.infrastructure.support.transaction.ResourcelessTransactionManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -92,9 +92,10 @@ class SimpleJobExplorerIntegrationTests {
   void getStepExecution() throws JobExecutionException {
 
     // Prepare the jobRepository for the test
-    JobExecution jobExecution = this.jobRepository.createJobExecution("myJob", new JobParameters());
-    StepExecution stepExecution = jobExecution.createStepExecution("flowStep");
-    this.jobRepository.add(stepExecution);
+    var jobParameters = new JobParameters();
+    var jobInstance = this.jobRepository.createJobInstance("myJob", jobParameters);
+    var jobExecution = this.jobRepository.createJobExecution(jobInstance, jobParameters, new ExecutionContext());
+    var stepExecution = this.jobRepository.createStepExecution("flowStep", jobExecution);
 
     // Executed on the remote end in remote partitioning use case
     StepExecution jobExplorerStepExecution = this.jobExplorer.getStepExecution(jobExecution.getId(), stepExecution.getId());

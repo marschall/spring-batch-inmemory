@@ -1,8 +1,8 @@
 package com.github.marschall.spring.batch.inmemory;
 
-import org.springframework.batch.core.JobInterruptedException;
-import org.springframework.batch.core.Step;
-import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.job.JobInterruptedException;
+import org.springframework.batch.core.step.Step;
+import org.springframework.batch.core.step.StepExecution;
 
 public class DummyStep implements Step {
 

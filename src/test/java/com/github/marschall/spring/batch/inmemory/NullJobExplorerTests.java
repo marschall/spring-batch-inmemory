@@ -8,8 +8,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.batch.core.JobInstance;
-import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.batch.core.job.JobInstance;
+import org.springframework.batch.core.repository.explore.JobExplorer;
 
 class NullJobExplorerTests {
 

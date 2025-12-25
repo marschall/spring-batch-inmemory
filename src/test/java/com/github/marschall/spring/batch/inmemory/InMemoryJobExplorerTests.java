@@ -15,15 +15,16 @@ import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobExecutionException;
-import org.springframework.batch.core.JobInstance;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.JobExecutionException;
+import org.springframework.batch.core.job.JobInstance;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
 import org.springframework.batch.core.launch.NoSuchJobException;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.repository.explore.JobExplorer;
+import org.springframework.batch.core.step.StepExecution;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
 
 class InMemoryJobExplorerTests {
 
@@ -40,14 +41,14 @@ class InMemoryJobExplorerTests {
     InMemoryJobStorage storage = new InMemoryJobStorage();
     this.jobExplorer = new InMemoryJobExplorer(storage);
     this.jobRepository = new InMemoryJobRepository(storage);
-    this.jobExecution = this.jobRepository.createJobExecution("jobName", new JobParameters());
-    this.jobInstance = this.jobExecution.getJobInstance();
+    JobParameters jobParameters = new JobParameters();
+    this.jobInstance = this.jobRepository.createJobInstance("jobName", jobParameters);
+    this.jobExecution = this.jobRepository.createJobExecution(this.jobInstance, jobParameters, new ExecutionContext());
   }
 
   @Test
   void getJobExecution() throws JobExecutionException {
-    StepExecution stepExecution = new StepExecution("step1", this.jobExecution);
-    this.jobRepository.add(stepExecution);
+    StepExecution stepExecution = this.jobRepository.createStepExecution("step1", this.jobExecution);
 
     JobExecution readBackJobExecution = this.jobExplorer.getJobExecution(this.jobExecution.getId());
     assertNotNull(readBackJobExecution);
@@ -72,9 +73,7 @@ class InMemoryJobExplorerTests {
 
   @Test
   void getStepExecution() {
-    StepExecution stepExecution = this.jobExecution.createStepExecution("foo");
-    this.jobRepository.add(stepExecution);
-    assertNotNull(stepExecution.getId());
+    StepExecution stepExecution = this.jobRepository.createStepExecution("foo", this.jobExecution);
 
     stepExecution = this.jobExplorer.getStepExecution(this.jobExecution.getId(), stepExecution.getId());
 
@@ -99,8 +98,7 @@ class InMemoryJobExplorerTests {
 
   @Test
   void findRunningJobExecutions() {
-    StepExecution stepExecution = this.jobExecution.createStepExecution("step");
-    this.jobRepository.add(stepExecution);
+    StepExecution stepExecution = this.jobRepository.createStepExecution("step", this.jobExecution);
     // switch status to running
     this.jobExecution.setStartTime(LocalDateTime.now());
     this.jobRepository.update(this.jobExecution);
@@ -124,8 +122,7 @@ class InMemoryJobExplorerTests {
 
   @Test
   void findJobExecutions() {
-    StepExecution stepExecution = this.jobExecution.createStepExecution("step");
-    this.jobRepository.add(stepExecution);
+    StepExecution stepExecution = this.jobRepository.createStepExecution("step", this.jobExecution);
 
     List<JobExecution> readBackJobExeuctions = this.jobExplorer.getJobExecutions(this.jobInstance);
     assertThat(readBackJobExeuctions, hasSize(1));

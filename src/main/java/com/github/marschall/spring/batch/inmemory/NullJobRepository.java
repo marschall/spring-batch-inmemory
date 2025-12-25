@@ -5,17 +5,19 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobInstance;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.JobInstance;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.launch.NoSuchJobException;
 import org.springframework.batch.core.repository.JobRepository;
-import org.springframework.lang.Nullable;
+import org.springframework.batch.core.step.StepExecution;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Null implementation of {@link JobExplorer}
@@ -47,19 +49,18 @@ public final class NullJobRepository implements JobRepository {
 
     return jobInstance;
   }
-
+  
   @Override
-  public JobExecution createJobExecution(String jobName, JobParameters jobParameters) {
+  public JobExecution createJobExecution(JobInstance jobInstance, JobParameters jobParameters, ExecutionContext executionContext) {
 
-    Objects.requireNonNull(jobName, "jobName");
+    Objects.requireNonNull(jobInstance, "jobInstance");
     Objects.requireNonNull(jobParameters, "jobParameters");
 
-    JobInstance jobInstance = new JobInstance(JOB_INSTANCE_ID.incrementAndGet(), jobName);
-    jobInstance.incrementVersion();
-
-    JobExecution jobExecution = new JobExecution(jobInstance, JOB_EXECUTION_ID.incrementAndGet(), jobParameters);
+    JobExecution jobExecution = new JobExecution(JOB_EXECUTION_ID.incrementAndGet(), jobInstance, jobParameters);
     jobExecution.incrementVersion();
     jobExecution.setLastUpdated(LocalDateTime.now());
+    
+    jobInstance.addJobExecution(jobExecution);
 
     return jobExecution;
   }
@@ -67,29 +68,10 @@ public final class NullJobRepository implements JobRepository {
   @Override
   public void update(JobExecution jobExecution) {
     Objects.requireNonNull(jobExecution, "jobExecution");
-    Objects.requireNonNull(jobExecution.getJobId(), "jobExecution.getJobId()");
     Objects.requireNonNull(jobExecution.getId(), "jobExecution.getId()");
 
     jobExecution.setLastUpdated(LocalDateTime.now());
     jobExecution.incrementVersion();
-  }
-
-  @Override
-  public void add(StepExecution stepExecution) {
-    validateStepExecution(stepExecution);
-
-    stepExecution.setId(STEP_EXECUTION_ID.incrementAndGet());
-    stepExecution.setLastUpdated(LocalDateTime.now());
-    stepExecution.incrementVersion();
-    this.checkForInterruption(stepExecution);
-  }
-
-  @Override
-  public void addAll(Collection<StepExecution> stepExecutions) {
-    for (StepExecution stepExecution : stepExecutions) { // implicit null check
-      // TODO only check job execution once
-      this.add(stepExecution);
-    }
   }
 
   @Override
@@ -198,5 +180,91 @@ public final class NullJobRepository implements JobRepository {
       stepExecution.setTerminateOnly();
     }
   }
+
+  @Override
+  public List<JobInstance> findJobInstancesByJobName(String jobName, int start,
+          int count) {
+    // TODO Auto-generated method stub
+    return JobRepository.super.findJobInstancesByJobName(jobName, start, count);
+  }
+
+  @Override
+  public List<JobInstance> getJobInstances(String jobName, int start,
+          int count) {
+    // TODO Auto-generated method stub
+    return JobRepository.super.getJobInstances(jobName, start, count);
+  }
+
+  @Override
+  public List<JobInstance> findJobInstances(String jobName) {
+    // TODO Auto-generated method stub
+    return JobRepository.super.findJobInstances(jobName);
+  }
+
+  @Override
+  public @Nullable JobInstance getJobInstance(long jobInstanceId) {
+    // TODO Auto-generated method stub
+    return JobRepository.super.getJobInstance(jobInstanceId);
+  }
+
+  @Override
+  public @Nullable JobInstance getLastJobInstance(String jobName) {
+    // TODO Auto-generated method stub
+    return JobRepository.super.getLastJobInstance(jobName);
+  }
+
+  @Override
+  public long getJobInstanceCount(String jobName) throws NoSuchJobException {
+    // TODO Auto-generated method stub
+    return JobRepository.super.getJobInstanceCount(jobName);
+  }
+
+  @Override
+  public @Nullable JobExecution getJobExecution(long executionId) {
+    // TODO Auto-generated method stub
+    return JobRepository.super.getJobExecution(executionId);
+  }
+
+  @Override
+  public List<JobExecution> getJobExecutions(JobInstance jobInstance) {
+    // TODO Auto-generated method stub
+    return JobRepository.super.getJobExecutions(jobInstance);
+  }
+
+  @Override
+  public @Nullable JobExecution getLastJobExecution(JobInstance jobInstance) {
+    // TODO Auto-generated method stub
+    return JobRepository.super.getLastJobExecution(jobInstance);
+  }
+
+  @Override
+  public Set<JobExecution> findRunningJobExecutions(String jobName) {
+    // TODO Auto-generated method stub
+    return JobRepository.super.findRunningJobExecutions(jobName);
+  }
+
+  @Override
+  public @Nullable StepExecution getStepExecution(long jobExecutionId,
+          long stepExecutionId) {
+    // TODO Auto-generated method stub
+    return JobRepository.super.getStepExecution(jobExecutionId, stepExecutionId);
+  }
+
+  @Override
+  public @Nullable StepExecution getStepExecution(long stepExecutionId) {
+    // TODO Auto-generated method stub
+    return JobRepository.super.getStepExecution(stepExecutionId);
+  }
+
+  @Override
+  public StepExecution createStepExecution(String stepName,
+          JobExecution jobExecution) {
+    // TODO Auto-generated method stub
+    return JobRepository.super.createStepExecution(stepName, jobExecution);
+  }
+  
+  // FIXME
+  
+  
 
 }

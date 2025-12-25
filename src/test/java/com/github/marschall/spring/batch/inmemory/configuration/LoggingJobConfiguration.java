@@ -4,15 +4,15 @@ import java.lang.invoke.MethodHandles;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
-import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.job.parameters.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.core.step.tasklet.CallableTaskletAdapter;
 import org.springframework.batch.core.step.tasklet.Tasklet;
-import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.batch.infrastructure.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -64,12 +64,10 @@ public class LoggingJobConfiguration {
   }
 
   private Tasklet loggingTasklet(String stepName) {
-    CallableTaskletAdapter taskletAdapter = new CallableTaskletAdapter();
-    taskletAdapter.setCallable(() -> {
+    return new CallableTaskletAdapter(() -> {
       LOGGER.info("executing step: " + stepName);
       return RepeatStatus.FINISHED;
     });
-    return taskletAdapter;
   }
 
 }

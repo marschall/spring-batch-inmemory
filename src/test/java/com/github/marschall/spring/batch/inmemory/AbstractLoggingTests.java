@@ -12,9 +12,9 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.ExitStatus;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.test.JobLauncherTestUtils;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.test.JobOperatorTestUtils;
 import org.springframework.batch.test.JobRepositoryTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +24,7 @@ import org.springframework.context.ApplicationContext;
 abstract class AbstractLoggingTests {
 
   @Autowired
-  private JobLauncherTestUtils jobLauncherTestUtils;
+  private JobOperatorTestUtils jobOperatorTestUtils;
 
   @Autowired
   private JobRepositoryTestUtils jobRepositoryTestUtils;
@@ -36,8 +36,8 @@ abstract class AbstractLoggingTests {
   void launchJob() throws Exception {
     LocalDateTime start = LocalDateTime.now();
     Job job = this.applicationContext.getBean("loggingJob", Job.class);
-    this.jobLauncherTestUtils.setJob(job);
-    JobExecution jobExecution = this.jobLauncherTestUtils.launchJob();
+    this.jobOperatorTestUtils.setJob(job);
+    JobExecution jobExecution = this.jobOperatorTestUtils.startJob();
     assertEquals(ExitStatus.COMPLETED, jobExecution.getExitStatus());
     LocalDateTime end = LocalDateTime.now();
 

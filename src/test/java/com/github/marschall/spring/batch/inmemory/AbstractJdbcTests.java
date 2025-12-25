@@ -11,9 +11,9 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.batch.core.ExitStatus;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.test.JobLauncherTestUtils;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.test.JobOperatorTestUtils;
 import org.springframework.batch.test.JobRepositoryTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 abstract class AbstractJdbcTests {
 
   @Autowired
-  private JobLauncherTestUtils jobLauncherTestUtils;
+  private JobOperatorTestUtils jobOperatorTestUtils;
 
   @Autowired
   private JobRepositoryTestUtils jobRepositoryTestUtils;
@@ -44,8 +44,8 @@ abstract class AbstractJdbcTests {
   @Order(1)
   void launchJob() throws Exception {
     Job job = this.applicationContext.getBean("insertingJob", Job.class);
-    this.jobLauncherTestUtils.setJob(job);
-    JobExecution jobExecution = this.jobLauncherTestUtils.launchJob();
+    this.jobOperatorTestUtils.setJob(job);
+    JobExecution jobExecution = this.jobOperatorTestUtils.startJob();
     assertEquals(ExitStatus.COMPLETED, jobExecution.getExitStatus());
   }
 
