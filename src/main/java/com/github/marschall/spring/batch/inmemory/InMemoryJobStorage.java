@@ -22,6 +22,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.batch.core.BatchStatus;
@@ -63,6 +64,7 @@ public final class InMemoryJobStorage {
   private final Map<Long, ExecutionContext> jobExecutionContextsById;
   private final Map<Long, ExecutionContext> stepExecutionContextsById;
   private final Map<Long, Map<Long, StepExecution>> stepExecutionsByJobExecutionId;
+  private final Map<Long, StepExecution> stepExecutionsById;
   private final Map<StepExecutionKey, StepExecutionStatistics> stepExecutionStatistics;
 
   private final ReadWriteLock instanceLock;
@@ -81,6 +83,7 @@ public final class InMemoryJobStorage {
     this.stepExecutionContextsById = new HashMap<>();
     this.jobInstanceToExecutions = new HashMap<>();
     this.stepExecutionsByJobExecutionId = new HashMap<>();
+    this.stepExecutionsById = new HashMap<>();
     this.stepExecutionStatistics = new HashMap<>();
     this.instanceLock = new ReentrantReadWriteLock();
     this.nextJobInstanceId = 1L;
@@ -95,6 +98,23 @@ public final class InMemoryJobStorage {
     } else {
       return List.of();
     }
+  }
+
+  List<JobExecution> getJobExecutions(JobInstance jobInstance) {
+    Lock readLock = this.instanceLock.readLock();
+    readLock.lock();
+    List<JobExecution> jobExecutions;
+    try {
+      List<Long> jobExecutionIds = this.getJobExecutionsUnlocked(jobInstance).jobExecutionIds();
+      jobExecutions = new ArrayList<>(jobExecutionIds.size());
+      for (Long jobExecutionId : jobExecutionIds) {
+        JobExecution jobExecution = this.jobExecutionsById.get(jobExecutionId);
+        jobExecutions.add(this.copyJobExecutionWithDependencies(jobExecution));
+      }
+    } finally {
+      readLock.unlock();
+    }
+    return jobExecutions;
   }
 
   private JobExecutions getJobExecutionsUnlocked(JobInstance jobInstance) {
@@ -132,10 +152,10 @@ public final class InMemoryJobStorage {
       instancesAndParameters = new ArrayList<>();
       this.jobInstancesByName.put(jobName, instancesAndParameters);
     }
-    Map<String, JobParameter<?>> identifyingJoParameters = jobParameters.parameters().stream()
+    Map<String, JobParameter<?>> identifyingJobParameters = jobParameters.parameters().stream()
                                  .filter(JobParameter::identifying)
                                  .collect(toMap(JobParameter::name, Function.identity()));
-    instancesAndParameters.add(new JobInstanceAndParameters(jobInstance, identifyingJoParameters));
+    instancesAndParameters.add(new JobInstanceAndParameters(jobInstance, identifyingJobParameters));
 
     return jobInstance;
   }
@@ -365,7 +385,7 @@ public final class InMemoryJobStorage {
 
     jobExecution.setLastUpdated(LocalDateTime.now());
     this.synchronizeStatus(jobExecution);
-    Long id = jobExecution.getId();
+    long id = jobExecution.getId();
 
     Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
@@ -448,7 +468,7 @@ public final class InMemoryJobStorage {
     List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
     if(instancesAndParameters != null) {
       for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
-        if (instanceAndParametes.areIdentifyingJoParametersEqualTo(jobParameters)) {
+        if (instanceAndParametes.areIdentifyingJobParametersEqualTo(jobParameters)) {
           return instanceAndParametes.jobInstance();
         }
       }
@@ -664,7 +684,7 @@ public final class InMemoryJobStorage {
       return null;
     }
   }
-  
+
   StepExecution getStepExecution(long stepExecutionId) {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
@@ -707,6 +727,23 @@ public final class InMemoryJobStorage {
     }
   }
 
+  private StepExecution getStepExecutionUnlocked(long stepExecutionId) {
+    StepExecution stepExecution = stepExecutionsById.get(stepExecutionId);
+    if (stepExecution == null) {
+      return null;
+    }
+
+    JobExecution jobExecution = this.jobExecutionsById.get(stepExecution.getJobExecutionId());
+    if (jobExecution == null) {
+      throw new IllegalStateException("job execution not found");
+    }
+    JobExecution parent = copyJobExecution(jobExecution);
+    // only load the job execution context, not all steps
+    this.setJobExecutionContextUnlocked(parent);
+
+    return copyStepExecutionForReading(stepExecution, jobExecution);
+  }
+
   StepExecution getLastStepExecution(JobInstance jobInstance, String stepName) {
     Lock readLock = this.instanceLock.readLock();
     readLock.lock();
@@ -715,8 +752,8 @@ public final class InMemoryJobStorage {
       if (statistics == null) {
         return null;
       }
-      Long lastJobExecutionId = statistics.getLastJobExecutionId();
-      Long lastStepExecutionId = statistics.getLastStepExecutionId();
+      long lastJobExecutionId = statistics.getLastJobExecutionId();
+      long lastStepExecutionId = statistics.getLastStepExecutionId();
       JobExecution latestJobExecution = this.jobExecutionsById.get(lastJobExecutionId);
       StepExecution latestStepExecution = this.stepExecutionsByJobExecutionId.get(lastJobExecutionId).get(lastStepExecutionId);
       if (latestStepExecution != null) {
@@ -731,7 +768,7 @@ public final class InMemoryJobStorage {
       readLock.unlock();
     }
   }
-  
+
   StepExecution createStepExecution(String stepName, JobExecution jobExecution) {
     Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
@@ -745,7 +782,7 @@ public final class InMemoryJobStorage {
     return stepExecution;
   }
 
-  private void addStepExecutionUnlocked(StepExecution stepExecution, JobExecution jobExecution2) {
+  private void addStepExecutionUnlocked(StepExecution stepExecution, JobExecution jobExecution) {
     long jobExecutionId = stepExecution.getJobExecutionId();
 
     // TODO no need to look up for every step of the name job
@@ -753,9 +790,9 @@ public final class InMemoryJobStorage {
     if (stepExecutions == null) {
       stepExecutions = new HashMap<>();
       this.stepExecutionsByJobExecutionId.put(jobExecutionId, stepExecutions);
+      this.stepExecutionsById.put(stepExecution.getId(), stepExecution);
     }
 
-    JobExecution jobExecution = stepExecution.getJobExecution();
     long jobInstanceId = jobExecution.getJobInstance().getId();
     long stepExecutionId = stepExecution.getId();
     stepExecution.incrementVersion();
@@ -778,8 +815,8 @@ public final class InMemoryJobStorage {
   }
 
   void updateStepExecution(StepExecution stepExecution) {
-    Long jobExecutionId = stepExecution.getJobExecutionId();
-    Long stepExecutionId = stepExecution.getId();
+    long jobExecutionId = stepExecution.getJobExecutionId();
+    long stepExecutionId = stepExecution.getId();
     Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
     try {
@@ -805,11 +842,8 @@ public final class InMemoryJobStorage {
   }
 
   void deleteStepExecution(StepExecution stepExecution) {
-    Long jobExecutionId = stepExecution.getJobExecutionId();
-    if (jobExecutionId == null) {
-      return;
-    }
-    Long stepExecutionId = stepExecution.getId();
+    long jobExecutionId = stepExecution.getJobExecutionId();
+    long stepExecutionId = stepExecution.getId();
     Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
     try {
@@ -831,7 +865,7 @@ public final class InMemoryJobStorage {
     Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
     try {
-      Long jobExecutionId = jobExecution.getId();
+      long jobExecutionId = jobExecution.getId();
       Map<Long, StepExecution> stepExecutions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
       if (stepExecutions != null && !stepExecutions.isEmpty()) {
         // violates API contract but consistent with SimpleJobRepository
@@ -845,6 +879,7 @@ public final class InMemoryJobStorage {
         jobExecutions.removeBlockingJobExecutionId(jobExecutionId);
       }
       this.jobExecutionContextsById.remove(jobExecutionId);
+      // TODO delete rest of graph
     } finally {
       writeLock.unlock();
     }
@@ -860,6 +895,7 @@ public final class InMemoryJobStorage {
         throw new IllegalStateException("found existing job executions");
       }
       // TODO delete stepExecutionStatistics
+      // TODO delete tree
       this.instancesById.remove(jobInstance.getInstanceId());
       this.jobInstancesByName.remove(jobInstance.getJobName());
     } finally {
@@ -911,8 +947,8 @@ public final class InMemoryJobStorage {
     for (Throwable failureException : original.getFailureExceptions()) {
       copy.addFailureException(failureException);
     }
-    // do not set the exeuction context
-    // do not add step exeuctions
+    // do not set the execution context
+    // do not add step executions
     return copy;
   }
 
@@ -960,7 +996,7 @@ public final class InMemoryJobStorage {
       throw new IllegalStateException("JobExecution must already be registered");
     }
     boolean blocking = hasBlockingStatus(jobExecution);
-    Long jobExecutionId = jobExecution.getId();
+    long jobExecutionId = jobExecution.getId();
     if (blocking) {
       jobExecutions.addBlockingJobExecutionId(jobExecutionId);
     } else {
@@ -995,6 +1031,7 @@ public final class InMemoryJobStorage {
       this.stepExecutionContextsById.clear();
       this.jobInstanceToExecutions.clear();
       this.stepExecutionsByJobExecutionId.clear();
+      this.stepExecutionsById.clear();
       this.stepExecutionStatistics.clear();
       this.nextJobInstanceId = 1L;
       this.nextJobExecutionId = 1L;
@@ -1010,27 +1047,27 @@ public final class InMemoryJobStorage {
 
   static final class StepExecutionStatistics {
 
-    private Long lastStepExecutionId;
+    private long lastStepExecutionId;
 
-    private Long lastJobExecutionId;
+    private long lastJobExecutionId;
 
     private long stepExecutionCount;
 
-    StepExecutionStatistics(Long lastStepExecutionId, Long lastJobExecutionId) {
+    StepExecutionStatistics(long lastStepExecutionId, long lastJobExecutionId) {
       this.lastStepExecutionId = lastStepExecutionId;
       this.lastJobExecutionId = lastJobExecutionId;
       this.stepExecutionCount = 1;
     }
 
-    Long getLastStepExecutionId() {
+    long getLastStepExecutionId() {
       return this.lastStepExecutionId;
     }
 
-    Long getLastJobExecutionId() {
+    long getLastJobExecutionId() {
       return this.lastJobExecutionId;
     }
 
-    void setLastExecutionIds(Long lastStepExecutionId, Long lastJobExecutionId) {
+    void setLastExecutionIds(long lastStepExecutionId, long lastJobExecutionId) {
       this.lastStepExecutionId = lastStepExecutionId;
       this.lastJobExecutionId = lastJobExecutionId;
     }
@@ -1045,19 +1082,24 @@ public final class InMemoryJobStorage {
 
   }
 
-  record JobInstanceAndParameters(JobInstance jobInstance, Map<String, JobParameter<?>> identifyingJoParameters) {
+  record JobInstanceAndParameters(JobInstance jobInstance, Map<String, JobParameter<?>> identifyingJobParameters) {
 
-    boolean areIdentifyingJoParametersEqualTo(JobParameters otherJobParameters) {
-      Map<String, JobParameter<?>> otherJobParametersMap = otherJobParameters.getParameters();
-      for (Entry<String, JobParameter<?>> identifyingJoParameter : this.identifyingJoParameters.entrySet()) {
-        if (!identifyingJoParameter.getValue().equals(otherJobParametersMap.get(identifyingJoParameter.getKey()))) {
+    boolean areIdentifyingJobParametersEqualTo(JobParameters otherJobParameters) {
+
+
+      Map<String, JobParameter<?>> otherJobParametersMap = otherJobParameters.parameters()
+                                                                             .stream()
+                                                                             .collect(toMap(JobParameter::name, Function.identity()));
+      for (Entry<String, JobParameter<?>> identifyingJobParameter : identifyingJobParameters.entrySet()) {
+        JobParameter<?> otherValue = otherJobParametersMap.get(identifyingJobParameter.getKey());
+        if (!identifyingJobParameter.getValue().equals(otherValue)) {
           return false;
         }
       }
-      for (Entry<String, JobParameter<?>> identifyingJoParameter : otherJobParametersMap.entrySet()) {
-        JobParameter<?> identifyingJoParameterValue = identifyingJoParameter.getValue();
-        if (identifyingJoParameterValue.identifying()) {
-          if (!identifyingJoParameterValue.equals(this.identifyingJoParameters.get(identifyingJoParameter.getKey()))) {
+      for (Entry<String, JobParameter<?>> identifyingJobParameter : otherJobParametersMap.entrySet()) {
+        JobParameter<?> identifyingJobParameterValue = identifyingJobParameter.getValue();
+        if (identifyingJobParameterValue.identifying()) {
+          if (!identifyingJobParameterValue.equals(this.identifyingJobParameters.get(identifyingJobParameter.getKey()))) {
             return false;
           }
         }
@@ -1073,19 +1115,19 @@ public final class InMemoryJobStorage {
       this(new HashSet<>(), new ArrayList<>());
     }
 
-    void addBlockingJobExecutionId(Long jobExecutionId) {
+    void addBlockingJobExecutionId(long jobExecutionId) {
       this.blockingJobExecutionIds.add(jobExecutionId);
     }
 
-    void addJobExecutionId(Long jobExecutionId) {
+    void addJobExecutionId(long jobExecutionId) {
       this.jobExecutionIds.add(jobExecutionId);
     }
 
-    void removeBlockingJobExecutionId(Long jobExecutionId) {
+    void removeBlockingJobExecutionId(long jobExecutionId) {
       this.blockingJobExecutionIds.remove(jobExecutionId);
     }
     
-    void removeJobExecutionId(Long jobExecutionId) {
+    void removeJobExecutionId(long jobExecutionId) {
       this.jobExecutionIds.remove(jobExecutionId);
     }
 

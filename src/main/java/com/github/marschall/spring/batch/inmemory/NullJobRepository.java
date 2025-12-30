@@ -2,7 +2,6 @@ package com.github.marschall.spring.batch.inmemory;
 
 import java.lang.invoke.MethodHandles;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -10,14 +9,15 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 import org.springframework.batch.core.job.JobExecution;
 import org.springframework.batch.core.job.JobInstance;
 import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.launch.NoSuchJobException;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.repository.explore.JobExplorer;
 import org.springframework.batch.core.step.StepExecution;
 import org.springframework.batch.infrastructure.item.ExecutionContext;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Null implementation of {@link JobExplorer}
@@ -182,89 +182,69 @@ public final class NullJobRepository implements JobRepository {
   }
 
   @Override
-  public List<JobInstance> findJobInstancesByJobName(String jobName, int start,
-          int count) {
-    // TODO Auto-generated method stub
-    return JobRepository.super.findJobInstancesByJobName(jobName, start, count);
+  public List<JobInstance> findJobInstancesByJobName(String jobName, int start, int count) {
+    return List.of();
   }
 
   @Override
-  public List<JobInstance> getJobInstances(String jobName, int start,
-          int count) {
-    // TODO Auto-generated method stub
-    return JobRepository.super.getJobInstances(jobName, start, count);
+  public List<JobInstance> getJobInstances(String jobName, int start, int count) {
+    return List.of();
   }
 
   @Override
   public List<JobInstance> findJobInstances(String jobName) {
-    // TODO Auto-generated method stub
-    return JobRepository.super.findJobInstances(jobName);
+    return List.of();
   }
 
   @Override
   public @Nullable JobInstance getJobInstance(long jobInstanceId) {
-    // TODO Auto-generated method stub
-    return JobRepository.super.getJobInstance(jobInstanceId);
+    return null;
   }
 
   @Override
   public @Nullable JobInstance getLastJobInstance(String jobName) {
-    // TODO Auto-generated method stub
-    return JobRepository.super.getLastJobInstance(jobName);
+    return null;
   }
 
   @Override
   public long getJobInstanceCount(String jobName) throws NoSuchJobException {
-    // TODO Auto-generated method stub
-    return JobRepository.super.getJobInstanceCount(jobName);
+    throw new NoSuchJobException(jobName);
   }
 
   @Override
   public @Nullable JobExecution getJobExecution(long executionId) {
-    // TODO Auto-generated method stub
-    return JobRepository.super.getJobExecution(executionId);
+    return null;
   }
 
   @Override
   public List<JobExecution> getJobExecutions(JobInstance jobInstance) {
-    // TODO Auto-generated method stub
-    return JobRepository.super.getJobExecutions(jobInstance);
+    return List.of();
   }
 
   @Override
   public @Nullable JobExecution getLastJobExecution(JobInstance jobInstance) {
-    // TODO Auto-generated method stub
-    return JobRepository.super.getLastJobExecution(jobInstance);
+    return null;
   }
 
   @Override
   public Set<JobExecution> findRunningJobExecutions(String jobName) {
-    // TODO Auto-generated method stub
-    return JobRepository.super.findRunningJobExecutions(jobName);
+    return Set.of();
   }
 
   @Override
-  public @Nullable StepExecution getStepExecution(long jobExecutionId,
-          long stepExecutionId) {
-    // TODO Auto-generated method stub
-    return JobRepository.super.getStepExecution(jobExecutionId, stepExecutionId);
+  public @Nullable StepExecution getStepExecution(long jobExecutionId, long stepExecutionId) {
+    return null;
   }
 
   @Override
   public @Nullable StepExecution getStepExecution(long stepExecutionId) {
-    // TODO Auto-generated method stub
-    return JobRepository.super.getStepExecution(stepExecutionId);
+    return null;
   }
 
   @Override
-  public StepExecution createStepExecution(String stepName,
-          JobExecution jobExecution) {
-    // TODO Auto-generated method stub
-    return JobRepository.super.createStepExecution(stepName, jobExecution);
+  public StepExecution createStepExecution(String stepName, JobExecution jobExecution) {
+    return null;
   }
-  
-  // FIXME
-  
   
 
 }

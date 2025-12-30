@@ -58,7 +58,9 @@ class InMemoryJobRepositoryTests {
     assertEquals(List.of(jobName), jobNames);
 
     String newJobName = jobName + "new";
-    this.jobRepository.createJobExecution(newJobName, new JobParameters(), new ExecutionContext());
+    JobParameters newJobParameters = new JobParameters();
+    JobInstance newJobInstance = this.jobRepository.createJobInstance(newJobName, newJobParameters);
+    this.jobRepository.createJobExecution(newJobInstance, newJobParameters, new ExecutionContext());
     jobNames = this.jobRepository.getJobNames();
     assertEquals(List.of(jobName, newJobName), jobNames);
   }

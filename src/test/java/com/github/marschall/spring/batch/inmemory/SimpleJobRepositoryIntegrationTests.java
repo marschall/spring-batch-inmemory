@@ -20,11 +20,13 @@ import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.job.parameters.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobExecutionAlreadyRunningException;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.NoSuchStepException;
 import org.springframework.batch.core.step.StepExecution;
 import org.springframework.batch.infrastructure.item.ExecutionContext;
 
 class SimpleJobRepositoryIntegrationTests {
 
+  // TODO use
   private static final String STEP_NAME = "step1";
 
   private JobRepository jobRepository;
@@ -96,11 +98,13 @@ class SimpleJobRepositoryIntegrationTests {
    * count and last execution are correct.
    */
   @Test
-  void getStepExecutionCountAndLastStepExecution() throws JobExecutionException {
+  void getStepExecutionCountAndLastStepExecution() throws NoSuchStepException {
     // first execution
-    JobExecution firstJobExec = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters, new ExecutionContext());
-    StepExecution firstStepExec = new StepExecution(1L, JOB_NAME, firstJobExec);
-    this.jobRepository.add(firstStepExec);
+    var jobInstance = this.jobRepository.createJobInstance(JOB_NAME, this.jobParameters);
+    JobExecution firstJobExec = this.jobRepository.createJobExecution(jobInstance, this.jobParameters, new ExecutionContext());
+    StepExecution firstStepExec = this.jobRepository.createStepExecution(JOB_NAME, firstJobExec);
+//    StepExecution firstStepExec = new StepExecution(1L, JOB_NAME, firstJobExec);
+//    this.jobRepository.add(firstStepExec);
 
     assertEquals(1, this.jobRepository.getStepExecutionCount(firstJobExec.getJobInstance(), JOB_NAME));
     assertEquals(firstStepExec, this.jobRepository.getLastStepExecution(firstJobExec.getJobInstance(), JOB_NAME));
@@ -116,9 +120,10 @@ class SimpleJobRepositoryIntegrationTests {
     this.jobRepository.update(firstJobExec);
 
     // second execution
-    JobExecution secondJobExec = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters, new ExecutionContext());
-    StepExecution secondStepExec = new StepExecution(1L, JOB_NAME, secondJobExec);
-    this.jobRepository.add(secondStepExec);
+    JobExecution secondJobExec = this.jobRepository.createJobExecution(jobInstance, this.jobParameters, new ExecutionContext());
+    StepExecution secondStepExec = this.jobRepository.createStepExecution(JOB_NAME, secondJobExec);
+//    StepExecution secondStepExec = new StepExecution(1L, JOB_NAME, secondJobExec);
+//    this.jobRepository.add(secondStepExec);
 
     assertEquals(2, this.jobRepository.getStepExecutionCount(secondJobExec.getJobInstance(), JOB_NAME));
     assertEquals(secondStepExec, this.jobRepository.getLastStepExecution(secondJobExec.getJobInstance(), JOB_NAME));
@@ -130,13 +135,16 @@ class SimpleJobRepositoryIntegrationTests {
   @Test
   void testSaveExecutionContext() throws JobExecutionException {
     ExecutionContext ctx = new ExecutionContext(Map.of("crashedPosition", 7));
-    JobExecution jobExec = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters, new ExecutionContext());
+    var jobInstance = this.jobRepository.createJobInstance(JOB_NAME, this.jobParameters);
+    JobExecution jobExec = this.jobRepository.createJobExecution(jobInstance, this.jobParameters, ctx);
     jobExec.setStartTime(this.ofEpochMillis(0));
-    jobExec.setExecutionContext(ctx);
-    StepExecution stepExec = new StepExecution(1L, JOB_NAME, jobExec);
+//    jobExec.setExecutionContext(ctx);
+    StepExecution stepExec = this.jobRepository.createStepExecution(JOB_NAME, jobExec);
+//    StepExecution stepExec = new StepExecution(1L, JOB_NAME, jobExec);
     stepExec.setExecutionContext(ctx);
 
-    this.jobRepository.add(stepExec);
+//    this.jobRepository.add(stepExec);
+    this.jobRepository.update(jobExec);
 
     StepExecution retrievedStepExec = this.jobRepository.getLastStepExecution(jobExec.getJobInstance(), JOB_NAME);
     assertEquals(stepExec, retrievedStepExec);
@@ -154,25 +162,27 @@ class SimpleJobRepositoryIntegrationTests {
    */
   @Test
   void onlyOneJobExecutionAllowedRunning() throws JobExecutionException {
-    JobExecution jobExecution = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters, new ExecutionContext());
+    var jobInstance = this.jobRepository.createJobInstance(JOB_NAME, this.jobParameters);
+    JobExecution jobExecution = this.jobRepository.createJobExecution(jobInstance, this.jobParameters, new ExecutionContext());
 
     //simulating a running job execution
     jobExecution.setStartTime(LocalDateTime.now());
     this.jobRepository.update(jobExecution);
 
-    assertThrows(JobExecutionAlreadyRunningException.class, () -> this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters, new ExecutionContext()));
+    assertThrows(JobExecutionAlreadyRunningException.class, () -> this.jobRepository.createJobExecution(jobInstance, this.jobParameters, new ExecutionContext()));
   }
 
   @Test
   void getLastJobExecution() throws JobExecutionException, InterruptedException {
-    JobExecution jobExecution = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters, new ExecutionContext());
+    var jobInstance = this.jobRepository.createJobInstance(JOB_NAME, this.jobParameters);
+    JobExecution jobExecution = this.jobRepository.createJobExecution(jobInstance, this.jobParameters, new ExecutionContext());
     jobExecution.setStatus(BatchStatus.FAILED);
     jobExecution.setEndTime(LocalDateTime.now());
     this.jobRepository.update(jobExecution);
     Thread.sleep(10);
-    jobExecution = this.jobRepository.createJobExecution(JOB_NAME, this.jobParameters, new ExecutionContext());
-    StepExecution stepExecution = new StepExecution(STEP_NAME, jobExecution);
-    this.jobRepository.add(stepExecution);
+    jobExecution = this.jobRepository.createJobExecution(jobInstance, this.jobParameters, new ExecutionContext());
+    StepExecution stepExecution = this.jobRepository.createStepExecution(STEP_NAME, jobExecution);
+//    this.jobRepository.add(stepExecution);
     jobExecution.addStepExecutions(Arrays.asList(stepExecution));
     assertEquals(jobExecution, this.jobRepository.getLastJobExecution(JOB_NAME, this.jobParameters));
     assertEquals(stepExecution, jobExecution.getStepExecutions().iterator().next());
@@ -187,11 +197,12 @@ class SimpleJobRepositoryIntegrationTests {
     JobParameters jobParameters = new JobParametersBuilder()
             .addString("name", "foo", false)
             .toJobParameters();
-    JobExecution jobExecution1 = this.jobRepository.createJobExecution(JOB_NAME, jobParameters, new ExecutionContext());
+    var jobInstance = this.jobRepository.createJobInstance(JOB_NAME, jobParameters);
+    JobExecution jobExecution1 = this.jobRepository.createJobExecution(jobInstance, jobParameters, new ExecutionContext());
     jobExecution1.setStatus(BatchStatus.COMPLETED);
     jobExecution1.setEndTime(LocalDateTime.now());
     this.jobRepository.update(jobExecution1);
-    JobExecution jobExecution2 = this.jobRepository.createJobExecution(JOB_NAME, jobParameters, new ExecutionContext());
+    JobExecution jobExecution2 = this.jobRepository.createJobExecution(jobInstance, jobParameters, new ExecutionContext());
     assertNotNull(jobExecution1);
     assertNotNull(jobExecution2);
   }

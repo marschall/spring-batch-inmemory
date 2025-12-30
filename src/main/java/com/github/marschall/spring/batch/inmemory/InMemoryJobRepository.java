@@ -15,6 +15,7 @@ import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.launch.NoSuchJobException;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.explore.JobExplorer;
+import org.springframework.batch.core.step.NoSuchStepException;
 import org.springframework.batch.core.step.StepExecution;
 import org.springframework.batch.infrastructure.item.ExecutionContext;
 
@@ -101,7 +102,7 @@ public final class InMemoryJobRepository implements JobRepository {
   }
 
   @Override
-  public long getStepExecutionCount(JobInstance jobInstance, String stepName) {
+  public long getStepExecutionCount(JobInstance jobInstance, String stepName) throws NoSuchStepException {
     return this.storage.countStepExecutions(jobInstance, stepName);
   }
 
@@ -209,6 +210,7 @@ public final class InMemoryJobRepository implements JobRepository {
 
   @Override
   public List<JobExecution> getJobExecutions(JobInstance jobInstance) {
+    // TODO hydration?
     return this.storage.getJobExecutions(jobInstance);
   }
 
@@ -229,6 +231,7 @@ public final class InMemoryJobRepository implements JobRepository {
 
   @Override
   public @Nullable StepExecution getStepExecution(long stepExecutionId) {
+    // TODO hydration?
     return this.storage.getStepExecution(stepExecutionId);
   }
 
