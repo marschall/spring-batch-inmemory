@@ -5,7 +5,9 @@ import org.springframework.batch.core.configuration.support.DefaultBatchConfigur
 import org.springframework.batch.core.configuration.support.MapJobRegistry;
 import org.springframework.batch.core.configuration.support.ScopeConfiguration;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.batch.core.launch.support.TaskExecutorJobLauncher;
+import org.springframework.batch.core.launch.support.TaskExecutorJobOperator;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.explore.JobExplorer;
 import org.springframework.context.annotation.Bean;
@@ -41,6 +43,19 @@ public class NullBatchConfiguration {
     TaskExecutorJobLauncher jobLauncher = new TaskExecutorJobLauncher();
     jobLauncher.setJobRepository(this.jobRepository());
     return jobLauncher;
+  }
+
+  /**
+   * Defines the {@link JobOperator} bean.
+   *
+   * @return the {@link JobOperator} bean.
+   */
+  @Bean
+  public JobOperator jobOperator() {
+    TaskExecutorJobOperator jobOperator = new TaskExecutorJobOperator();
+    jobOperator.setJobRepository(this.jobRepository());
+    jobOperator.setJobRegistry(this.jobRegistry());
+    return jobOperator;
   }
 
   /**

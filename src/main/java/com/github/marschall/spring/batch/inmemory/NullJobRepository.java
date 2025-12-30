@@ -56,13 +56,27 @@ public final class NullJobRepository implements JobRepository {
     Objects.requireNonNull(jobInstance, "jobInstance");
     Objects.requireNonNull(jobParameters, "jobParameters");
 
-    JobExecution jobExecution = new JobExecution(JOB_EXECUTION_ID.incrementAndGet(), jobInstance, jobParameters);
+    var jobExecution = new JobExecution(JOB_EXECUTION_ID.incrementAndGet(), jobInstance, jobParameters);
     jobExecution.incrementVersion();
     jobExecution.setLastUpdated(LocalDateTime.now());
-    
+
     jobInstance.addJobExecution(jobExecution);
 
     return jobExecution;
+  }
+
+  @Override
+  public StepExecution createStepExecution(String stepName, JobExecution jobExecution) {
+
+    Objects.requireNonNull(stepName, "stepName");
+    Objects.requireNonNull(jobExecution, "jobExecution");
+
+    var stepExecution = new StepExecution(STEP_EXECUTION_ID.incrementAndGet(), stepName, jobExecution);
+    stepExecution.incrementVersion();
+    stepExecution.setLastUpdated(LocalDateTime.now());
+    jobExecution.addStepExecution(stepExecution);
+
+    return stepExecution;
   }
 
   @Override
@@ -238,11 +252,6 @@ public final class NullJobRepository implements JobRepository {
 
   @Override
   public @Nullable StepExecution getStepExecution(long stepExecutionId) {
-    return null;
-  }
-
-  @Override
-  public StepExecution createStepExecution(String stepName, JobExecution jobExecution) {
     return null;
   }
   
