@@ -924,7 +924,9 @@ public final class InMemoryJobStorage {
       if (statistics != null) {
         return statistics.getStepExecutionCount();
       } else {
-        throw new NoSuchStepException(stepName);
+        // FIXME
+        return 0L;
+//        throw new NoSuchStepException(stepName);
       }
     } finally {
       readLock.unlock();
