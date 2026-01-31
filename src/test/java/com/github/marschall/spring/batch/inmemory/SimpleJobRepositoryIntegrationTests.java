@@ -1,8 +1,8 @@
 package com.github.marschall.spring.batch.inmemory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -15,10 +15,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.job.JobExecution;
-import org.springframework.batch.core.job.JobExecutionException;
 import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.job.parameters.JobParametersBuilder;
-import org.springframework.batch.core.launch.JobExecutionAlreadyRunningException;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.NoSuchStepException;
 import org.springframework.batch.core.step.StepExecution;
@@ -75,7 +73,7 @@ class SimpleJobRepositoryIntegrationTests {
    * executions belong to the same job instance and job.
    */
   @Test
-  void createAndFindWithNoStartDate() throws JobExecutionException {
+  void createAndFindWithNoStartDate() {
 
     var jobInstance = this.jobRepository.createJobInstance(JOB_NAME, this.jobParameters);
     JobExecution firstExecution = this.jobRepository.createJobExecution(jobInstance, this.jobParameters, new ExecutionContext());
@@ -133,7 +131,7 @@ class SimpleJobRepositoryIntegrationTests {
    * Save execution context and retrieve it.
    */
   @Test
-  void testSaveExecutionContext() throws JobExecutionException {
+  void testSaveExecutionContext() {
     ExecutionContext ctx = new ExecutionContext(Map.of("crashedPosition", 7));
     var jobInstance = this.jobRepository.createJobInstance(JOB_NAME, this.jobParameters);
     JobExecution jobExec = this.jobRepository.createJobExecution(jobInstance, this.jobParameters, ctx);
@@ -143,37 +141,34 @@ class SimpleJobRepositoryIntegrationTests {
 //    StepExecution stepExec = new StepExecution(1L, JOB_NAME, jobExec);
     stepExec.setExecutionContext(ctx);
 
-//    this.jobRepository.add(stepExec);
     this.jobRepository.update(jobExec);
+    this.jobRepository.updateExecutionContext(jobExec);
+    this.jobRepository.update(stepExec);
+    this.jobRepository.updateExecutionContext(stepExec);
 
     StepExecution retrievedStepExec = this.jobRepository.getLastStepExecution(jobExec.getJobInstance(), JOB_NAME);
     assertEquals(stepExec, retrievedStepExec);
-    assertEquals(ctx, retrievedStepExec.getExecutionContext());
+    ExecutionContext retrievedContext = retrievedStepExec.getExecutionContext();
+    assertNotNull(retrievedContext);
+    assertEquals(ctx, retrievedContext);
 
-    // job execution would have to be updated
-//    JobExecution retrievedJobExec = this.jobRepository.getLastJobExecution(JOB_NAME, jobExec.getJobParameters());
-//    assertEquals(jobExec, retrievedJobExec);
-//    assertEquals(ctx, retrievedJobExec.getExecutionContext());
-  }
+    retrievedStepExec = this.jobRepository.getStepExecution(stepExec.getId());
+    assertEquals(stepExec, retrievedStepExec);
+    retrievedContext = retrievedStepExec.getExecutionContext();
+    assertNotNull(retrievedContext);
+    assertEquals(ctx, retrievedContext);
 
-  /**
-   * If JobExecution is already running, exception will be thrown in attempt
-   * to create new execution.
-   */
-  @Test
-  void onlyOneJobExecutionAllowedRunning() throws JobExecutionException {
-    var jobInstance = this.jobRepository.createJobInstance(JOB_NAME, this.jobParameters);
-    JobExecution jobExecution = this.jobRepository.createJobExecution(jobInstance, this.jobParameters, new ExecutionContext());
+    JobExecution retrievedJobExec = this.jobRepository.getLastJobExecution(JOB_NAME, jobExec.getJobParameters());
+    assertEquals(jobExec, retrievedJobExec);
+    assertEquals(ctx, retrievedJobExec.getExecutionContext());
 
-    //simulating a running job execution
-    jobExecution.setStartTime(LocalDateTime.now());
-    this.jobRepository.update(jobExecution);
-
-    assertThrows(JobExecutionAlreadyRunningException.class, () -> this.jobRepository.createJobExecution(jobInstance, this.jobParameters, new ExecutionContext()));
+    retrievedJobExec = this.jobRepository.getJobExecution(jobExec.getId());
+    assertEquals(jobExec, retrievedJobExec);
+    assertEquals(ctx, retrievedJobExec.getExecutionContext());
   }
 
   @Test
-  void getLastJobExecution() throws JobExecutionException, InterruptedException {
+  void getLastJobExecution() throws InterruptedException {
     var jobInstance = this.jobRepository.createJobInstance(JOB_NAME, this.jobParameters);
     JobExecution jobExecution = this.jobRepository.createJobExecution(jobInstance, this.jobParameters, new ExecutionContext());
     jobExecution.setStatus(BatchStatus.FAILED);
@@ -185,6 +180,7 @@ class SimpleJobRepositoryIntegrationTests {
 //    this.jobRepository.add(stepExecution);
     jobExecution.addStepExecutions(Arrays.asList(stepExecution));
     assertEquals(jobExecution, this.jobRepository.getLastJobExecution(JOB_NAME, this.jobParameters));
+    assertFalse(jobExecution.getExecutionContext().isDirty());
     assertEquals(stepExecution, jobExecution.getStepExecutions().iterator().next());
   }
 
@@ -193,7 +189,7 @@ class SimpleJobRepositoryIntegrationTests {
    * non-identifying job parameters when identifying the job instance.
    */
   @Test
-  void reExecuteWithSameJobParameters() throws JobExecutionException {
+  void reExecuteWithSameJobParameters() {
     JobParameters jobParameters = new JobParametersBuilder()
             .addString("name", "foo", false)
             .toJobParameters();

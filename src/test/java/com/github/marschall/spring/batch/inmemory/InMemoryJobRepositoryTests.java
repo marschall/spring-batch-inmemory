@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.junit.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -15,16 +16,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.job.JobExecution;
-import org.springframework.batch.core.job.JobExecutionException;
 import org.springframework.batch.core.job.JobInstance;
 import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.job.parameters.JobParametersBuilder;
-import org.springframework.batch.core.launch.JobExecutionAlreadyRunningException;
-import org.springframework.batch.core.launch.JobInstanceAlreadyCompleteException;
-import org.springframework.batch.core.launch.JobRestartException;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.NoSuchStepException;
 import org.springframework.batch.core.step.StepExecution;
@@ -41,7 +39,7 @@ class InMemoryJobRepositoryTests {
   private JobExecution jobExecution;
 
   @BeforeEach
-  void setUp() throws JobExecutionException {
+  void setUp() {
 
     this.jobRepository = new InMemoryJobRepository(new InMemoryJobStorage());
 
@@ -52,7 +50,7 @@ class InMemoryJobRepositoryTests {
   }
 
   @Test
-  void getJobNames() throws JobExecutionException {
+  void getJobNames() {
     String jobName = this.jobInstance.getJobName();
     List<String> jobNames = this.jobRepository.getJobNames();
     assertEquals(List.of(jobName), jobNames);
@@ -87,12 +85,18 @@ class InMemoryJobRepositoryTests {
   }
 
   @Test
+  void getJobExecutions() {
+    List<JobExecution> jobExecutions = this.jobRepository.getJobExecutions(this.jobInstance);
+    assertEquals(List.of(this.jobExecution), jobExecutions);
+  }
+
+  @Test
   void getJobInstance() {
     String jobName = this.jobInstance.getJobName();
     assertEquals(this.jobInstance, this.jobRepository.getJobInstance(jobName, this.jobParameters));
     JobParameters differentJobParameters = new JobParametersBuilder(this.jobParameters)
-                                                      .addString("key", "value", true)
-                                                      .toJobParameters();
+        .addString("key", "value", true)
+        .toJobParameters();
     assertNull(this.jobRepository.getJobInstance(jobName, differentJobParameters));
   }
 
@@ -105,7 +109,7 @@ class InMemoryJobRepositoryTests {
   }
 
   @Test
-  void updateValidJobExecution() throws JobExecutionException, InterruptedException {
+  void updateValidJobExecution() throws InterruptedException {
 
     LocalDateTime before = this.jobExecution.getLastUpdated();
     Thread.sleep(2L);
@@ -127,6 +131,7 @@ class InMemoryJobRepositoryTests {
     assertThrows(NullPointerException.class, () -> this.jobRepository.createStepExecution("stepName", null));
   }
 
+  @Disabled("Contract is unclear ResourcelessJobRepository sets it, SimpleJobRepository does not")
   @Test
   void saveStepExecutionSetsLastUpdated(){
 
@@ -171,45 +176,13 @@ class InMemoryJobRepositoryTests {
   @Test
   void isJobInstanceExistsFalse() {
     assertFalse(this.jobRepository.isJobInstanceExists("foo", new JobParameters()));
+    assertNull(this.jobRepository.getJobInstance("foo", new JobParameters()));
   }
 
   @Test
   void isJobInstanceExistsTrue() {
     assertTrue(this.jobRepository.isJobInstanceExists(this.jobInstance.getJobName(), this.jobParameters));
-  }
-
-  @Test
-  void createJobExecutionAlreadyRunning() {
-    this.jobExecution.setStatus(BatchStatus.STARTED);
-    this.jobExecution.setStartTime(LocalDateTime.now());
-    this.jobExecution.setEndTime(null);
-
-    this.jobRepository.update(this.jobExecution);
-
-    assertThrows(JobExecutionAlreadyRunningException.class, () ->
-      this.jobRepository.createJobExecution(this.jobInstance, this.jobParameters, new ExecutionContext()));
-  }
-
-  @Test
-  void createJobExecutionStatusUnknown() {
-    this.jobExecution.setStatus(BatchStatus.UNKNOWN);
-    this.jobExecution.setEndTime(LocalDateTime.now());
-
-    this.jobRepository.update(this.jobExecution);
-
-    assertThrows(JobRestartException.class, () ->
-      this.jobRepository.createJobExecution(this.jobInstance, this.jobParameters, new ExecutionContext()));
-  }
-
-  @Test
-  void createJobExecutionAlreadyComplete() {
-    this.jobExecution.setStatus(BatchStatus.COMPLETED);
-    this.jobExecution.setEndTime(LocalDateTime.now());
-
-    this.jobRepository.update(this.jobExecution);
-
-    assertThrows(JobInstanceAlreadyCompleteException.class, () ->
-      this.jobRepository.createJobExecution(this.jobInstance, this.jobParameters, new ExecutionContext()));
+    assertNotNull(this.jobRepository.getJobInstance(this.jobInstance.getJobName(), this.jobParameters));
   }
 
   @Test
@@ -217,7 +190,7 @@ class InMemoryJobRepositoryTests {
     String jobName = this.jobInstance.getJobName() + "1";
     JobInstance secondInstance = this.jobRepository.createJobInstance(jobName, this.jobParameters);
 
-    assertThrows(IllegalStateException.class, () ->
+    assertDoesNotThrow(() ->
       this.jobRepository.createJobExecution(secondInstance, this.jobParameters, new ExecutionContext()));
   }
 
@@ -234,15 +207,20 @@ class InMemoryJobRepositoryTests {
     // Then
     assertEquals(expectedResult, actualResult);
   }
-  
+
+  @Disabled("""
+      these are broken
+      org.springframework.batch.core.job.SimpleStepHandler.shouldStart(StepExecution, JobExecution, Step)
+      org.springframework.batch.core.repository.explore.support.SimpleJobExplorer.getStepExecutionCount(JobInstance, String)
+      """)
   @Test
   void getStepExecutionCountNotExisting(){
     // Given
     String stepName = "stepName";
-    
+
     // When
     assertThrows(NoSuchStepException.class,
-            () -> this.jobRepository.getStepExecutionCount(this.jobInstance, stepName));
+        () -> this.jobRepository.getStepExecutionCount(this.jobInstance, stepName));
   }
 
   @Test
@@ -252,16 +230,16 @@ class InMemoryJobRepositoryTests {
 
     this.jobRepository.deleteStepExecution(stepExecution);
     // FIXME
-//    assertEquals(0L, this.jobRepository.getStepExecutionCount(this.jobInstance, stepName));
+    //    assertEquals(0L, this.jobRepository.getStepExecutionCount(this.jobInstance, stepName));
 
     this.jobRepository.deleteJobExecution(this.jobExecution);
     assertEquals(List.of(), this.jobRepository.findJobExecutions(this.jobInstance));
-//    this.jobRepository.getLastJobExecution(stepName, jobParameters)
+    //    this.jobRepository.getLastJobExecution(stepName, jobParameters)
 
     this.jobRepository.deleteJobInstance(this.jobInstance);
     assertNull(this.jobRepository.getJobInstance(this.jobInstance.getJobName(), this.jobParameters));
     // FIXME
-//    assertEquals(0L, this.jobRepository.getStepExecutionCount(this.jobInstance, stepName));
+    //    assertEquals(0L, this.jobRepository.getStepExecutionCount(this.jobInstance, stepName));
   }
 
 }

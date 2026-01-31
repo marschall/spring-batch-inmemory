@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.junit.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -16,7 +17,6 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.job.JobExecution;
-import org.springframework.batch.core.job.JobExecutionException;
 import org.springframework.batch.core.job.JobInstance;
 import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.job.parameters.JobParametersBuilder;
@@ -37,7 +37,7 @@ class InMemoryJobExplorerTests {
   private JobRepository jobRepository;
 
   @BeforeEach
-  void setUp() throws JobExecutionException {
+  void setUp() {
     InMemoryJobStorage storage = new InMemoryJobStorage();
     this.jobExplorer = new InMemoryJobExplorer(storage);
     this.jobRepository = new InMemoryJobRepository(storage);
@@ -47,8 +47,25 @@ class InMemoryJobExplorerTests {
   }
 
   @Test
-  void getJobExecution() throws JobExecutionException {
+  void getJobExecution() {
     StepExecution stepExecution = this.jobRepository.createStepExecution("step1", this.jobExecution);
+
+    JobExecution readBackJobExecution = this.jobExplorer.getJobExecution(this.jobExecution.getId());
+    assertNotNull(readBackJobExecution);
+    assertEquals(this.jobExecution, readBackJobExecution);
+    assertFalse(readBackJobExecution.getExecutionContext().isDirty());
+
+    Collection<StepExecution> readBackStepExecutions = readBackJobExecution.getStepExecutions();
+    assertThat(readBackStepExecutions, hasSize(1));
+    StepExecution readBackStepExecution = readBackStepExecutions.iterator().next();
+    assertEquals(stepExecution, readBackStepExecution);
+  }
+
+  @Test
+  void getHydrateStepExecution() {
+    StepExecution stepExecution = this.jobRepository.createStepExecution("step1", this.jobExecution);
+    stepExecution.getExecutionContext().putString("key", "value");
+    this.jobRepository.update(stepExecution);
 
     JobExecution readBackJobExecution = this.jobExplorer.getJobExecution(this.jobExecution.getId());
     assertNotNull(readBackJobExecution);
@@ -58,16 +75,21 @@ class InMemoryJobExplorerTests {
     assertThat(readBackStepExecutions, hasSize(1));
     StepExecution readBackStepExecution = readBackStepExecutions.iterator().next();
     assertEquals(stepExecution, readBackStepExecution);
+    assertFalse(readBackStepExecution.getExecutionContext().isDirty());
+
+    StepExecution hydratedStepExecution = this.jobRepository.getStepExecution(readBackStepExecution.getId());
+    assertEquals(1, hydratedStepExecution.getExecutionContext().size());
+    assertFalse(hydratedStepExecution.getExecutionContext().isDirty());
   }
 
   @Test
-  void getLastJobExecution() throws JobExecutionException {
+  void getLastJobExecution() {
     JobExecution lastJobExecution = this.jobExplorer.getLastJobExecution(this.jobExecution.getJobInstance());
     assertEquals(this.jobExecution, lastJobExecution);
   }
 
   @Test
-  void missingGetJobExecution() throws JobExecutionException {
+  void missingGetJobExecution() {
     assertNull(this.jobExplorer.getJobExecution(123L));
   }
 
@@ -78,6 +100,7 @@ class InMemoryJobExplorerTests {
     stepExecution = this.jobExplorer.getStepExecution(this.jobExecution.getId(), stepExecution.getId());
 
     assertEquals(this.jobInstance, stepExecution.getJobExecution().getJobInstance());
+    assertFalse(stepExecution.getExecutionContext().isDirty());
   }
 
   @Test
@@ -105,13 +128,15 @@ class InMemoryJobExplorerTests {
 
     Set<JobExecution> runningJobExecutions = this.jobExplorer.findRunningJobExecutions(this.jobExecution.getJobInstance().getJobName());
     assertThat(runningJobExecutions, hasSize(1));
-    JobExecution readBackJobExecutions = runningJobExecutions.iterator().next();
-    assertEquals(this.jobExecution, readBackJobExecutions);
+    JobExecution readBackJobExecution = runningJobExecutions.iterator().next();
+    assertEquals(this.jobExecution, readBackJobExecution);
+    assertFalse(readBackJobExecution.getExecutionContext().isDirty());
 
-    Collection<StepExecution> readBackStepExecutions = readBackJobExecutions.getStepExecutions();
+    Collection<StepExecution> readBackStepExecutions = readBackJobExecution.getStepExecutions();
     assertThat(readBackStepExecutions, hasSize(1));
     StepExecution readBackStepExecution = readBackStepExecutions.iterator().next();
     assertEquals(stepExecution, readBackStepExecution);
+    assertFalse(readBackStepExecution.getExecutionContext().isDirty());
   }
   
   @Test
@@ -133,6 +158,7 @@ class InMemoryJobExplorerTests {
     assertThat(readBackStepExecutions, hasSize(1));
     StepExecution readBackStepExecution = readBackStepExecutions.iterator().next();
     assertEquals(stepExecution, readBackStepExecution);
+    assertFalse(readBackStepExecution.getExecutionContext().isDirty());
   }
 
   @Test
@@ -152,8 +178,15 @@ class InMemoryJobExplorerTests {
     String jobName = this.jobInstance.getJobName();
     assertEquals(List.of(this.jobInstance), this.jobExplorer.getJobInstances(jobName, 0, 2));
 
+    // prefix match
     String namePattern = jobName.substring(0, jobName.length() - 1) + "*";
-    assertEquals(List.of(), this.jobExplorer.getJobInstances(namePattern, 0, 2));
+    List<JobInstance> jobInstances = this.jobExplorer.getJobInstances(namePattern, 0, 2);
+    assertEquals(List.of(this.jobInstance), jobInstances);
+
+    // suffix match
+    namePattern = "*" + jobName.substring(1);
+    jobInstances = this.jobExplorer.getJobInstances(namePattern, 0, 2);
+    assertEquals(List.of(this.jobInstance), jobInstances);
   }
 
   @Test

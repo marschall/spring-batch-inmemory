@@ -3,8 +3,6 @@ package com.github.marschall.spring.batch.inmemory;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
-import org.springframework.batch.core.job.parameters.JobParameter;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,12 +20,12 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.job.JobExecution;
 import org.springframework.batch.core.job.JobInstance;
+import org.springframework.batch.core.job.parameters.JobParameter;
 import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.launch.JobExecutionAlreadyRunningException;
 import org.springframework.batch.core.launch.JobInstanceAlreadyCompleteException;
@@ -37,8 +35,6 @@ import org.springframework.batch.core.step.NoSuchStepException;
 import org.springframework.batch.core.step.StepExecution;
 import org.springframework.batch.infrastructure.item.ExecutionContext;
 import org.springframework.dao.OptimisticLockingFailureException;
-
-import com.github.marschall.spring.batch.inmemory.InMemoryJobStorage.JobExecutions;
 
 /**
  * Backing store for {@link InMemoryJobRepository} and {@link InMemoryJobExplorer}.
@@ -125,24 +121,25 @@ public final class InMemoryJobStorage {
     Objects.requireNonNull(jobName, "jobName");
     Objects.requireNonNull(jobParameters, "jobParameters");
 
+    Map<String, JobParameter<?>> identifyingJobParameters = identifyingParametersMap(jobParameters);
     Lock writeLock = this.instanceLock.writeLock();
     writeLock.lock();
     try {
-      this.verifyNoJobInstanceUnlocked(jobName, jobParameters);
-      return this.createJobInstanceUnlocked(jobName, jobParameters);
+      this.verifyNoJobInstanceUnlocked(jobName, identifyingJobParameters);
+      return this.createJobInstanceUnlocked(jobName, jobParameters, identifyingJobParameters);
     } finally {
       writeLock.unlock();
     }
   }
 
-  private void verifyNoJobInstanceUnlocked(String jobName, JobParameters jobParameters) {
-    JobInstance jobInstance = this.getJobInstanceUnlocked(jobName, jobParameters);
+  private void verifyNoJobInstanceUnlocked(String jobName, Map<String, JobParameter<?>> identifyingJobParameters) {
+    JobInstance jobInstance = this.getJobInstanceUnlocked(jobName, identifyingJobParameters);
     if (jobInstance != null) {
       throw new IllegalStateException("JobInstance must not already exist");
     }
   }
 
-  private JobInstance createJobInstanceUnlocked(String jobName, JobParameters jobParameters) {
+  private JobInstance createJobInstanceUnlocked(String jobName, JobParameters jobParameters, Map<String, JobParameter<?>> identifyingJobParameters) {
     List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
     JobInstance jobInstance = new JobInstance(this.nextJobInstanceId++, jobName);
     jobInstance.incrementVersion();
@@ -152,12 +149,15 @@ public final class InMemoryJobStorage {
       instancesAndParameters = new ArrayList<>();
       this.jobInstancesByName.put(jobName, instancesAndParameters);
     }
-    Map<String, JobParameter<?>> identifyingJobParameters = jobParameters.parameters().stream()
-                                 .filter(JobParameter::identifying)
-                                 .collect(toMap(JobParameter::name, Function.identity()));
     instancesAndParameters.add(new JobInstanceAndParameters(jobInstance, identifyingJobParameters));
 
     return jobInstance;
+  }
+
+  private static Map<String, JobParameter<?>> identifyingParametersMap(JobParameters jobParameters) {
+    return jobParameters.parameters().stream()
+                                     .filter(JobParameter::identifying)
+                                     .collect(toMap(JobParameter::name, Function.identity()));
   }
 
   private void mapJobExecutionUnlocked(JobInstance jobInstance, JobExecution jobExecution) {
@@ -465,10 +465,14 @@ public final class InMemoryJobStorage {
   }
 
   private JobInstance getJobInstanceUnlocked(String jobName, JobParameters jobParameters) {
+    return getJobInstanceUnlocked(jobName, identifyingParametersMap(jobParameters));
+  }
+
+  private JobInstance getJobInstanceUnlocked(String jobName, Map<String, JobParameter<?>> identifyingJobParameters) {
     List<JobInstanceAndParameters> instancesAndParameters = this.jobInstancesByName.get(jobName);
     if(instancesAndParameters != null) {
       for (JobInstanceAndParameters instanceAndParametes : instancesAndParameters) {
-        if (instanceAndParametes.areIdentifyingJobParametersEqualTo(jobParameters)) {
+        if (instanceAndParametes.areIdentifyingJobParametersEqualTo(identifyingJobParameters)) {
           return instanceAndParametes.jobInstance();
         }
       }
@@ -534,7 +538,7 @@ public final class InMemoryJobStorage {
   }
 
   List<JobInstance> getJobInstances(String jobName, int start, int count) {
-    return this.getJobInstancesByNameExact(jobName, start, count);
+    return this.getJobInstancesByNamePattern(jobName, start, count);
   }
 
   private List<JobInstance> getJobInstancesByNameExact(String jobName, int start, int count) {
@@ -660,7 +664,7 @@ public final class InMemoryJobStorage {
   }
 
   private void loadStepExecutionsUnlocked(JobExecution jobExecution) {
-    Long jobExecutionId = jobExecution.getId();
+    long jobExecutionId = jobExecution.getId();
     Map<Long, StepExecution> executions = this.stepExecutionsByJobExecutionId.get(jobExecutionId);
     if ((executions == null) || executions.isEmpty()) {
       return;
@@ -669,9 +673,10 @@ public final class InMemoryJobStorage {
     stepExecutions.sort(Comparator.comparing(StepExecution::getId));
     for (int i = 0; i < stepExecutions.size(); i++) {
       StepExecution stepExecution = stepExecutions.get(i);
-      // adds the new StepExecution to the JobExecution
-      copyStepExecutionForReading(stepExecution, jobExecution);
+      StepExecution copy = copyStepExecutionForReading(stepExecution, jobExecution);
+      stepExecutions.set(i, copy);
     }
+    jobExecution.addStepExecutions(stepExecutions);
   }
 
   @Nullable
@@ -790,7 +795,6 @@ public final class InMemoryJobStorage {
     if (stepExecutions == null) {
       stepExecutions = new HashMap<>();
       this.stepExecutionsByJobExecutionId.put(jobExecutionId, stepExecutions);
-      this.stepExecutionsById.put(stepExecution.getId(), stepExecution);
     }
 
     long jobInstanceId = jobExecution.getJobInstance().getId();
@@ -924,9 +928,9 @@ public final class InMemoryJobStorage {
       if (statistics != null) {
         return statistics.getStepExecutionCount();
       } else {
-        // FIXME
-        return 0L;
-//        throw new NoSuchStepException(stepName);
+        // FIXME org.springframework.batch.core.job.SimpleStepHandler.shouldStart(StepExecution, JobExecution, Step) is broken
+        return 0;
+//      throw new NoSuchStepException(stepName);
       }
     } finally {
       readLock.unlock();
@@ -961,7 +965,6 @@ public final class InMemoryJobStorage {
     return copy;
   }
 
-  // adds the StepExecution to the JobExecution
   private static StepExecution copyStepExecutionForReading(StepExecution original, JobExecution jobExecution) {
     StepExecution copy = new StepExecution(original.getId(), original.getStepName(), jobExecution);
     copyStepProperties(original, copy);
@@ -1086,24 +1089,19 @@ public final class InMemoryJobStorage {
 
   record JobInstanceAndParameters(JobInstance jobInstance, Map<String, JobParameter<?>> identifyingJobParameters) {
 
-    boolean areIdentifyingJobParametersEqualTo(JobParameters otherJobParameters) {
+    boolean areIdentifyingJobParametersEqualTo(Map<String, JobParameter<?>> otherJobParametersMap) {
 
 
-      Map<String, JobParameter<?>> otherJobParametersMap = otherJobParameters.parameters()
-                                                                             .stream()
-                                                                             .collect(toMap(JobParameter::name, Function.identity()));
-      for (Entry<String, JobParameter<?>> identifyingJobParameter : identifyingJobParameters.entrySet()) {
-        JobParameter<?> otherValue = otherJobParametersMap.get(identifyingJobParameter.getKey());
-        if (!identifyingJobParameter.getValue().equals(otherValue)) {
-          return false;
-        }
+      if (!this.identifyingJobParameters.keySet().equals(otherJobParametersMap.keySet())) {
+        return false;
       }
-      for (Entry<String, JobParameter<?>> identifyingJobParameter : otherJobParametersMap.entrySet()) {
-        JobParameter<?> identifyingJobParameterValue = identifyingJobParameter.getValue();
-        if (identifyingJobParameterValue.identifying()) {
-          if (!identifyingJobParameterValue.equals(this.identifyingJobParameters.get(identifyingJobParameter.getKey()))) {
-            return false;
-          }
+      // JobParameter equals ignores value
+      for (Entry<String, JobParameter<?>> entry : this.identifyingJobParameters.entrySet()) {
+        JobParameter<?> thisParameter = entry.getValue();
+        String parameterName = entry.getKey();
+        JobParameter<?> otherParameter = otherJobParametersMap.get(parameterName);
+        if (!otherParameter.value().equals(thisParameter.value())) {
+          return false;
         }
       }
       return true;
