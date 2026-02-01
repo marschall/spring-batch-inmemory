@@ -22,6 +22,8 @@ Compared to `MapJobRepositoryFactoryBean`:
 - our implementations should perform much better in situations of jobs with many steps
 - our `JobRepository` and `JobExplorer` implementations are not deprecated and work with Spring Batch 5
 
+Versions 2.x of this project support Spring Batch 5.x.
+
 Versions 1.x of this project support Spring Batch 4.x.
 
 Configuration
