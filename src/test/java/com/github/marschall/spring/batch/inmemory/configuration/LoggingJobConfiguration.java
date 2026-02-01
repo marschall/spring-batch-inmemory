@@ -6,7 +6,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
-import org.springframework.batch.core.job.parameters.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -35,7 +34,6 @@ public class LoggingJobConfiguration {
   @Bean
   public Job loggingJob() {
     return new JobBuilder("loggingJob", this.jobRepository)
-      .incrementer(new RunIdIncrementer())
       .start(this.step1())
       .next(this.step2())
       .next(this.step3())

@@ -66,6 +66,7 @@ class InMemoryJobExplorerTests {
     StepExecution stepExecution = this.jobRepository.createStepExecution("step1", this.jobExecution);
     stepExecution.getExecutionContext().putString("key", "value");
     this.jobRepository.update(stepExecution);
+    this.jobRepository.updateExecutionContext(stepExecution);
 
     JobExecution readBackJobExecution = this.jobExplorer.getJobExecution(this.jobExecution.getId());
     assertNotNull(readBackJobExecution);
