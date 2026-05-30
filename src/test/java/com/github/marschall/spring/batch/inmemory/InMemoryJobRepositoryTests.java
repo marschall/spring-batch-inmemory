@@ -1,9 +1,6 @@
 package com.github.marschall.spring.batch.inmemory;
 
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.hamcrest.junit.MatcherAssert.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -118,9 +115,9 @@ class InMemoryJobRepositoryTests {
     LocalDateTime lastUpdated = this.jobExecution.getLastUpdated();
 
     assertNotNull(lastUpdated);
-    assertThat(lastUpdated, greaterThan(before));
+    assertThat(lastUpdated).isAfter(before);
     // TODO 2sec
-    assertThat(lastUpdated, lessThanOrEqualTo(after));
+    assertThat(lastUpdated).isBeforeOrEqualTo(after);
   }
 
   @Test
@@ -142,8 +139,8 @@ class InMemoryJobRepositoryTests {
     LocalDateTime lastUpdated = stepExecution.getLastUpdated();
 
     assertNotNull(lastUpdated);
-    assertThat(lastUpdated, greaterThanOrEqualTo(before));
-    assertThat(lastUpdated, lessThanOrEqualTo(after));
+    assertThat(lastUpdated).isAfterOrEqualTo(before);
+    assertThat(lastUpdated).isBeforeOrEqualTo(after);
   }
 
   @Test
@@ -158,8 +155,8 @@ class InMemoryJobRepositoryTests {
     LocalDateTime lastUpdated = stepExecution.getLastUpdated();
 
     assertNotNull(lastUpdated);
-    assertThat(lastUpdated, greaterThanOrEqualTo(before));
-    assertThat(lastUpdated, lessThanOrEqualTo(after));
+    assertThat(lastUpdated).isAfterOrEqualTo(before);
+    assertThat(lastUpdated).isBeforeOrEqualTo(after);
   }
 
   @Test

@@ -1,8 +1,6 @@
 package com.github.marschall.spring.batch.inmemory;
 
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.junit.MatcherAssert.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -56,7 +54,7 @@ class InMemoryJobExplorerTests {
     assertFalse(readBackJobExecution.getExecutionContext().isDirty());
 
     Collection<StepExecution> readBackStepExecutions = readBackJobExecution.getStepExecutions();
-    assertThat(readBackStepExecutions, hasSize(1));
+    assertThat(readBackStepExecutions).hasSize(1);
     StepExecution readBackStepExecution = readBackStepExecutions.iterator().next();
     assertEquals(stepExecution, readBackStepExecution);
   }
@@ -73,7 +71,7 @@ class InMemoryJobExplorerTests {
     assertEquals(this.jobExecution, readBackJobExecution);
 
     Collection<StepExecution> readBackStepExecutions = readBackJobExecution.getStepExecutions();
-    assertThat(readBackStepExecutions, hasSize(1));
+    assertThat(readBackStepExecutions).hasSize(1);
     StepExecution readBackStepExecution = readBackStepExecutions.iterator().next();
     assertEquals(stepExecution, readBackStepExecution);
     assertFalse(readBackStepExecution.getExecutionContext().isDirty());
@@ -117,7 +115,7 @@ class InMemoryJobExplorerTests {
   @Test
   void findRunningJobExecutionsNotExisting() {
     Set<JobExecution> runningJobExecutions = this.jobExplorer.findRunningJobExecutions("notExisting");
-    assertThat(runningJobExecutions, empty());
+    assertThat(runningJobExecutions).isEmpty();
   }
 
   @Test
@@ -128,13 +126,13 @@ class InMemoryJobExplorerTests {
     this.jobRepository.update(this.jobExecution);
 
     Set<JobExecution> runningJobExecutions = this.jobExplorer.findRunningJobExecutions(this.jobExecution.getJobInstance().getJobName());
-    assertThat(runningJobExecutions, hasSize(1));
+    assertThat(runningJobExecutions).hasSize(1);
     JobExecution readBackJobExecution = runningJobExecutions.iterator().next();
     assertEquals(this.jobExecution, readBackJobExecution);
     assertFalse(readBackJobExecution.getExecutionContext().isDirty());
 
     Collection<StepExecution> readBackStepExecutions = readBackJobExecution.getStepExecutions();
-    assertThat(readBackStepExecutions, hasSize(1));
+    assertThat(readBackStepExecutions).hasSize(1);
     StepExecution readBackStepExecution = readBackStepExecutions.iterator().next();
     assertEquals(stepExecution, readBackStepExecution);
     assertFalse(readBackStepExecution.getExecutionContext().isDirty());
@@ -143,7 +141,7 @@ class InMemoryJobExplorerTests {
   @Test
   void findRunningJobExecutionsNull() {
     Set<JobExecution> runningJobExecutions = this.jobExplorer.findRunningJobExecutions(null);
-    assertThat(runningJobExecutions, empty());
+    assertThat(runningJobExecutions).isEmpty();
   }
 
   @Test
@@ -151,12 +149,12 @@ class InMemoryJobExplorerTests {
     StepExecution stepExecution = this.jobRepository.createStepExecution("step", this.jobExecution);
 
     List<JobExecution> readBackJobExeuctions = this.jobExplorer.getJobExecutions(this.jobInstance);
-    assertThat(readBackJobExeuctions, hasSize(1));
+    assertThat(readBackJobExeuctions).hasSize(1);
     JobExecution readBackJobExecutions = readBackJobExeuctions.iterator().next();
     assertEquals(this.jobExecution, readBackJobExecutions);
 
     Collection<StepExecution> readBackStepExecutions = readBackJobExecutions.getStepExecutions();
-    assertThat(readBackStepExecutions, hasSize(1));
+    assertThat(readBackStepExecutions).hasSize(1);
     StepExecution readBackStepExecution = readBackStepExecutions.iterator().next();
     assertEquals(stepExecution, readBackStepExecution);
     assertFalse(readBackStepExecution.getExecutionContext().isDirty());

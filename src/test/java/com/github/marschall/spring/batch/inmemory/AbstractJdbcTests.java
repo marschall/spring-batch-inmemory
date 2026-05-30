@@ -1,7 +1,6 @@
 package com.github.marschall.spring.batch.inmemory;
 
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.junit.MatcherAssert.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
@@ -53,7 +52,7 @@ abstract class AbstractJdbcTests {
   @Order(2)
   void createJobExecutions() throws Exception {
     List<JobExecution> jobExecutions = this.jobRepositoryTestUtils.createJobExecutions(4);
-    assertThat(jobExecutions, hasSize(4));
+    assertThat(jobExecutions).hasSize(4);
   }
 
   @Test

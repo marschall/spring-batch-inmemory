@@ -1,9 +1,6 @@
 package com.github.marschall.spring.batch.inmemory;
 
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.hamcrest.junit.MatcherAssert.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -41,19 +38,19 @@ abstract class AbstractLoggingTests {
     assertEquals(ExitStatus.COMPLETED, jobExecution.getExitStatus());
     LocalDateTime end = LocalDateTime.now();
 
-    assertThat(jobExecution.getStartTime(), greaterThanOrEqualTo(start));
-    assertThat(jobExecution.getStartTime(), lessThanOrEqualTo(end));
+    assertThat(jobExecution.getStartTime()).isAfterOrEqualTo(start);
+    assertThat(jobExecution.getStartTime()).isBeforeOrEqualTo(end);
 
     assertNotNull(jobExecution.getCreateTime());
-    assertThat(jobExecution.getCreateTime(), greaterThanOrEqualTo(start));
-    assertThat(jobExecution.getCreateTime(), lessThanOrEqualTo(jobExecution.getStartTime()));
-    assertThat(jobExecution.getCreateTime(), lessThanOrEqualTo(end));
+    assertThat(jobExecution.getCreateTime()).isAfterOrEqualTo(start);
+    assertThat(jobExecution.getCreateTime()).isBeforeOrEqualTo(jobExecution.getStartTime());
+    assertThat(jobExecution.getCreateTime()).isBeforeOrEqualTo(end);
   }
 
   @Test
   void createJobExecutions() throws Exception {
     List<JobExecution> jobExecutions = this.jobRepositoryTestUtils.createJobExecutions(4);
-    assertThat(jobExecutions, hasSize(4));
+    assertThat(jobExecutions).hasSize(4);
   }
 
 }
