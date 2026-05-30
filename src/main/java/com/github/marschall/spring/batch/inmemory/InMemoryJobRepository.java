@@ -89,11 +89,13 @@ public final class InMemoryJobRepository implements JobRepository {
   public void updateExecutionContext(StepExecution stepExecution) {
     validateStepExecution(stepExecution);
     this.storage.updateStepExecutionContext(stepExecution);
+    stepExecution.getExecutionContext().clearDirtyFlag();
   }
 
   @Override
   public void updateExecutionContext(JobExecution jobExecution) {
     this.storage.updateJobExecutionContext(jobExecution);
+    jobExecution.getExecutionContext().clearDirtyFlag();
   }
 
   @Override

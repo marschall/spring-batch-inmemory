@@ -101,13 +101,12 @@ public final class NullJobRepository implements JobRepository {
   @Override
   public void updateExecutionContext(StepExecution stepExecution) {
     validateStepExecution(stepExecution);
-    // nothing else
-
+    stepExecution.getExecutionContext().clearDirtyFlag();
   }
 
   @Override
   public void updateExecutionContext(JobExecution jobExecution) {
-    // nothing
+    jobExecution.getExecutionContext().clearDirtyFlag();
   }
 
   @Nullable

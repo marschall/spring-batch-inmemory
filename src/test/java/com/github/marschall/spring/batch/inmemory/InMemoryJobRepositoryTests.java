@@ -40,7 +40,6 @@ class InMemoryJobRepositoryTests {
 
   @BeforeEach
   void setUp() {
-
     this.jobRepository = new InMemoryJobRepository(new InMemoryJobStorage());
 
     this.jobParameters = new JobParametersBuilder().addString("bar", "test").toJobParameters();
@@ -240,6 +239,28 @@ class InMemoryJobRepositoryTests {
     assertNull(this.jobRepository.getJobInstance(this.jobInstance.getJobName(), this.jobParameters));
     // FIXME
     //    assertEquals(0L, this.jobRepository.getStepExecutionCount(this.jobInstance, stepName));
+  }
+
+  /**
+   * Save execution context clears the dirty flag.
+   */
+  @Test
+  void updateRestesDirtyFlag() {
+    jobExecution.setStartTime(LocalDateTime.now());
+    var executionContext = new ExecutionContext();
+    executionContext.put("crashedPosition", 7);
+    jobExecution.setExecutionContext(executionContext);
+    assertTrue(executionContext.isDirty(), "job execution context is dirty");
+    jobRepository.updateExecutionContext(jobExecution);
+    assertFalse(executionContext.isDirty(), "job execution context is dirty");
+
+    var stepExecution = jobRepository.createStepExecution("setpName", jobExecution);
+    executionContext = new ExecutionContext(executionContext);
+    executionContext.put("crashedPosition", 8);
+    stepExecution.setExecutionContext(executionContext);
+    assertTrue(executionContext.isDirty(), "step execution context is dirty");
+    jobRepository.updateExecutionContext(stepExecution);
+    assertFalse(executionContext.isDirty(), "step execution context is dirty");
   }
 
 }
