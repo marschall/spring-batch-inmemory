@@ -253,6 +253,5 @@ public final class NullJobRepository implements JobRepository {
   public @Nullable StepExecution getStepExecution(long stepExecutionId) {
     return null;
   }
-  
 
 }
